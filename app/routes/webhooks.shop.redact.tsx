@@ -2,14 +2,15 @@ import type { ActionFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import { purgeShopData } from "../models/purge.server";
 
+// GDPR: sent ~48h after uninstall. Final, unconditional erasure of everything
+// we hold for the shop. app/uninstalled already purged once; purgeShopData is
+// idempotent so running it again is safe and catches anything written between
+// uninstall and redact.
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { shop, topic } = await authenticate.webhook(request);
 
-  // Purge unconditionally, not just when a session still exists: this webhook
-  // can retry after the session is already gone, and future shop-scoped tables
-  // must be cleaned up regardless. purgeShopData is idempotent.
   await purgeShopData(shop);
-  console.log(`Received ${topic} webhook for ${shop} — shop data purged`);
+  console.log(`Received ${topic} webhook for ${shop} — all shop data purged`);
 
   return new Response();
 };

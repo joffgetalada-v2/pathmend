@@ -9,11 +9,11 @@
 - [x] Commit
 
 ### Phase 1 — Compliance skeleton
-- [ ] Session-token auth (embedded, managed installation, no third-party cookies)
-- [ ] GDPR webhook: customers/data_request (+ tested)
-- [ ] GDPR webhook: customers/redact (+ tested)
-- [ ] GDPR webhook: shop/redact (+ tested)
-- [ ] app/uninstalled → purge shop data + cancel scheduled jobs (+ tested)
+- [ ] Session-token auth (embedded, managed installation, no third-party cookies) — template provides it; verify live once dev store linked
+- [x] GDPR webhook: customers/data_request (+ unit tested; live `webhook trigger` test pending store link)
+- [x] GDPR webhook: customers/redact (+ unit tested; live test pending store link)
+- [x] GDPR webhook: shop/redact (+ unit tested; live test pending store link)
+- [x] app/uninstalled → purge shop data via idempotent purgeShopData (+ unit tested; no scheduled jobs exist yet — revisit when jobs land)
 - [ ] Billing plans (FREE / PRO $9.99 / MIGRATION $19.99, 7-day trials)
 - [ ] Plan gating middleware
 - [ ] Plan page (Settings & Plan)
@@ -64,11 +64,11 @@
 - [ ] Storefront perf impact ≈ 0
 
 ## Current Status
-- **Current phase:** Phase 0 — Setup (scaffold done; store link pending)
-- **Last completed task:** Scaffold from official React Router template; npm install (node 22.23.1 via `/usr/local/opt/node@22/bin` PATH prefix); prisma generate + migrate; `npm run build` green
-- **Files created/modified this session:** CLAUDE.md, PROGRESS.md, DECISIONS.md, full template scaffold (app/, extensions/, prisma/, config files)
+- **Current phase:** Phase 1 — Compliance skeleton (GDPR webhooks done; billing next). Phase 0 store link still pending user.
+- **Last completed task:** GDPR compliance webhooks — toml subscriptions + 3 route handlers + idempotent purgeShopData shared with hardened app/uninstalled; vitest set up; 8/8 unit tests green; typecheck + build clean; code review passed (0 critical/high)
+- **Files created/modified this session:** shopify.app.toml, app/models/purge.server.ts, app/routes/webhooks.customers.data_request.tsx, app/routes/webhooks.customers.redact.tsx, app/routes/webhooks.shop.redact.tsx, app/routes/webhooks.app.uninstalled.tsx, app/routes/__tests__/webhooks.compliance.test.ts, package.json (vitest)
 - **Next 3 actions:**
-  1. User runs `shopify app dev` in their terminal → auth, create app in Partner org, pick dev store; confirm embedded admin loads
-  2. Commit the generated `shopify.app.toml` client_id/config; checkpoint Phase 0 complete
-  3. Start Phase 1: uncomment + implement the 3 GDPR compliance webhook subscriptions in shopify.app.toml + route handlers
-- **Blockers/questions:** `shopify app dev` auth is interactive (device-auth link + org/store pickers) — needs user at the keyboard. Minor: `npm audit` reports issues in template deps (not addressed; revisit before ship)
+  1. User runs `PATH=/usr/local/opt/node@22/bin:$PATH shopify app dev` → auth, create app "pathmend" in Partner org, pick dev store, confirm embedded admin loads (closes Phase 0; also enables live webhook trigger tests)
+  2. Billing: verify current Billing API GraphQL mutations on shopify.dev, then implement 3 plans + 7-day trials + plan gating middleware
+  3. Settings & Plan page (Polaris) wired to billing state
+- **Blockers/questions:** Store link is the only user-blocked step; everything else proceeds. `npm audit` findings in template deps parked until pre-ship audit.
