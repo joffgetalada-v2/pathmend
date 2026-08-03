@@ -3,10 +3,10 @@
 ## Phase Checklist
 
 ### Phase 0 — Setup
-- [ ] Scaffold app via Shopify CLI (latest official TypeScript template)
+- [x] Scaffold app via Shopify CLI (latest official TypeScript template) — cloned shopify-app-template-react-router; deps installed; prisma migrated; build green
 - [ ] Connect dev store
 - [ ] Prove `shopify app dev` runs
-- [ ] Commit
+- [x] Commit
 
 ### Phase 1 — Compliance skeleton
 - [ ] Session-token auth (embedded, managed installation, no third-party cookies)
@@ -64,11 +64,11 @@
 - [ ] Storefront perf impact ≈ 0
 
 ## Current Status
-- **Current phase:** Pre-Phase 0 (project memory initialized)
-- **Last completed task:** Section 0 First Actions — CLAUDE.md, PROGRESS.md, DECISIONS.md created; first commit made
-- **Files created/modified this session:** CLAUDE.md, PROGRESS.md, DECISIONS.md
+- **Current phase:** Phase 0 — Setup (scaffold done; store link pending)
+- **Last completed task:** Scaffold from official React Router template; npm install (node 22.23.1 via `/usr/local/opt/node@22/bin` PATH prefix); prisma generate + migrate; `npm run build` green
+- **Files created/modified this session:** CLAUDE.md, PROGRESS.md, DECISIONS.md, full template scaffold (app/, extensions/, prisma/, config files)
 - **Next 3 actions:**
-  1. Get "go" from user, then scaffold app via Shopify CLI (latest official TS template)
-  2. Connect dev store and verify `shopify app dev` runs end-to-end
-  3. Commit scaffold and begin Phase 1 (GDPR webhooks + auth verification)
-- **Blockers/questions:** Awaiting "go"; need dev store handy for Phase 0
+  1. User runs `shopify app dev` in their terminal → auth, create app in Partner org, pick dev store; confirm embedded admin loads
+  2. Commit the generated `shopify.app.toml` client_id/config; checkpoint Phase 0 complete
+  3. Start Phase 1: uncomment + implement the 3 GDPR compliance webhook subscriptions in shopify.app.toml + route handlers
+- **Blockers/questions:** `shopify app dev` auth is interactive (device-auth link + org/store pickers) — needs user at the keyboard. Minor: `npm audit` reports issues in template deps (not addressed; revisit before ship)
