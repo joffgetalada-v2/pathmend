@@ -19,8 +19,8 @@
 - [x] Plan page (Settings & Plan) — 3 plan cards, subscribe/cancel actions, nav link; visual check pending store link
 
 ### Phase 2 — Core
-- [ ] Prisma models (redirects, 404 events, settings)
-- [ ] Redirect CRUD via GraphQL urlRedirect mutations (create/update/delete, paginated list, search)
+- [x] Prisma models (redirects, 404 events, settings) — Redirect / NotFoundEvent / ShopSettings + migration `core-models`; purge coverage extended + tested; `write_online_store_navigation` scope added
+- [x] Redirect CRUD via GraphQL urlRedirect mutations (create/update/delete, paginated list, search) — mutations verified on shopify.dev 2025-10; free-cap enforcement; best-effort DB mirror; Redirects page with search + cursor pagination; unit tested
 - [ ] 404 capture app embed (<5KB, async, zero layout shift, 404 template only)
 - [ ] App Proxy endpoint (store path, referrer, hit count, first/last seen, device type; dedupe by normalized path)
 - [ ] Dashboard: "Unresolved 404s" table + one-click Create redirect (pre-filled modal)
@@ -65,10 +65,10 @@
 
 ## Current Status
 - **Current phase:** Phase 1 — Compliance skeleton (GDPR webhooks + billing/gating/plan page done in code). Phase 0 store link still pending user.
-- **Last completed task:** Billing — verified on shopify.dev that manual Billing API is non-deprecated on 2025-10 (Managed Pricing is now Shopify's recommended default for new apps — logged in DECISIONS.md, revisit before submission); implemented plans module + billingConfig (Pro $9.99 / Migration $19.99, 7-day trials) + `requireFeature` gating + Settings & Plan page. Code review: approved, 0 critical/high. Security review found 1 CRITICAL (SDK defaults `billing.check` to `isTest: true` → test subscriptions would count as paid in production) — fixed with explicit `isTest: isBillingTest()` + plans filter + regression tests. 33/33 unit tests green; typecheck/build/lint clean
+- **Last completed task:** Redirect CRUD — urlRedirect create/update/delete/list verified on shopify.dev 2025-10 and implemented with free-cap enforcement, best-effort DB mirror, search (literal-quoted) + cursor pagination, Redirects page with edit/two-step delete. Reviews: code approved 0 critical/high; security found 1 HIGH (protocol-relative `//host` target bypassed the scheme allowlist → open redirect) — fixed + regression tests. 61/61 tests green; typecheck/build/lint clean
 - **Files created/modified this session:** app/models/plans.ts, app/models/billing.server.ts, app/models/__tests__/plans.test.ts, app/models/__tests__/billing.test.ts, app/shopify.server.ts, app/routes/app.plan.tsx, app/routes/app.tsx, PROGRESS.md, DECISIONS.md
 - **Next 3 actions:**
-  1. User runs `PATH=/usr/local/opt/node@22/bin:$PATH shopify app dev` → auth, create app "pathmend" in Partner org, pick dev store, confirm embedded admin loads + plan page renders + test-mode subscribe/cancel round-trip (closes Phase 0, verifies Phase 1 live)
-  2. Phase 2 start: Prisma models (Redirect, NotFoundEvent, ShopSettings) + migration
-  3. Redirect CRUD via GraphQL urlRedirect mutations (create/update/delete, paginated list, search) with userErrors handling
+  1. User runs `PATH=/usr/local/opt/node@22/bin:$PATH shopify app dev` → auth, create app "pathmend" in Partner org, pick dev store, confirm embedded admin loads; then live-test plan page, Redirects CRUD, and webhook triggers
+  2. 404 capture: theme app extension (app embed, <5KB, async, 404 template only) + App Proxy endpoint (dedupe by normalized path, hit counts, device type)
+  3. Dashboard + 404 Log UI: "Unresolved 404s" table, one-click Create redirect (pre-filled), bulk fix, mark-ignored
 - **Blockers/questions:** Store link is the only user-blocked step. Decide manual Billing API vs Managed Pricing before submission (manual implemented; switch is cheap — see DECISIONS.md 2026-08-10). `npm audit` findings in template deps parked until pre-ship audit.
