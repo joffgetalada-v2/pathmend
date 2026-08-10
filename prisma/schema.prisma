@@ -13,6 +13,48 @@ datasource db {
   url      = "file:dev.sqlite"
 }
 
+// Mirror of the native Shopify UrlRedirect we created — the live redirect
+// always lives in Shopify (never proxied through the app); this row powers
+// search-free listing joins, the free-plan cap, drift detection ("redirects
+// never silently disappear"), and analytics.
+model Redirect {
+  id         String   @id @default(cuid())
+  shop       String
+  shopifyGid String
+  path       String
+  target     String
+  // manual | not_found_fix | csv_import | migration | auto_heal
+  source     String   @default("manual")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([shop, path])
+  @@index([shop, createdAt])
+}
+
+// One row per (shop, normalized 404 path); repeat hits bump counters.
+model NotFoundEvent {
+  id          String   @id @default(cuid())
+  shop        String
+  path        String
+  referrer    String?
+  // desktop | mobile | tablet | unknown
+  deviceType  String   @default("unknown")
+  hits        Int      @default(1)
+  // unresolved | resolved | ignored
+  status      String   @default("unresolved")
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([shop, path])
+  @@index([shop, status, lastSeenAt])
+}
+
+model ShopSettings {
+  shop           String  @id
+  captureEnabled Boolean @default(true)
+}
+
 model Session {
   id            String    @id
   shop          String

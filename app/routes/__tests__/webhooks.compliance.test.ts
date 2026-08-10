@@ -8,10 +8,20 @@ vi.mock("../../shopify.server", () => ({
 }));
 
 const deleteManySessions = vi.fn();
+const deleteManyRedirects = vi.fn();
+const deleteManyNotFoundEvents = vi.fn();
+const deleteManyShopSettings = vi.fn();
 const transaction = vi.fn(async (ops: unknown[]) => ops);
 vi.mock("../../db.server", () => ({
   default: {
     session: { deleteMany: (args: unknown) => deleteManySessions(args) },
+    redirect: { deleteMany: (args: unknown) => deleteManyRedirects(args) },
+    notFoundEvent: {
+      deleteMany: (args: unknown) => deleteManyNotFoundEvents(args),
+    },
+    shopSettings: {
+      deleteMany: (args: unknown) => deleteManyShopSettings(args),
+    },
     $transaction: (ops: unknown[]) => transaction(ops),
   },
 }));
@@ -75,6 +85,15 @@ describe("shop/redact", () => {
 
     expect(response.status).toBe(200);
     expect(deleteManySessions).toHaveBeenCalledWith({ where: { shop: SHOP } });
+    expect(deleteManyRedirects).toHaveBeenCalledWith({
+      where: { shop: SHOP },
+    });
+    expect(deleteManyNotFoundEvents).toHaveBeenCalledWith({
+      where: { shop: SHOP },
+    });
+    expect(deleteManyShopSettings).toHaveBeenCalledWith({
+      where: { shop: SHOP },
+    });
     expect(transaction).toHaveBeenCalledTimes(1);
   });
 });

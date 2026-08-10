@@ -10,10 +10,13 @@ import db from "../db.server";
  */
 export async function purgeShopData(shop: string): Promise<void> {
   await db.$transaction([
-    // Future models (redirects, notFoundEvents, patternRules, settings, ...)
-    // get their deleteMany added above sessions. If a table can grow large
-    // (404 events), raise the transaction timeout or delete in batches —
-    // Prisma's default 5s transaction limit will bite on big shops.
+    // Every future shop-scoped model gets its deleteMany added above
+    // sessions. If a table can grow large (404 events), raise the transaction
+    // timeout or delete in batches — Prisma's default 5s transaction limit
+    // will bite on big shops.
+    db.redirect.deleteMany({ where: { shop } }),
+    db.notFoundEvent.deleteMany({ where: { shop } }),
+    db.shopSettings.deleteMany({ where: { shop } }),
     db.session.deleteMany({ where: { shop } }),
   ]);
 }
