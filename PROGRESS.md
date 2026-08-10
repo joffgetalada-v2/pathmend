@@ -32,10 +32,10 @@
 - [x] Verify Shopify bulk redirect import mutations on shopify.dev — urlRedirectImportCreate/Submit exist on 2025-10; per-row chosen for v1 (see DECISIONS.md)
 - [x] Pattern rules (wildcard + regex) — PatternRule model + pure matcher engine (full-path, case-insensitive, ReDoS-guarded regex) + PRO-gated rules page with live preview; unit tested (20 matcher tests)
 - [x] Auto-heal mode (404 matches pattern → materialize concrete redirect + log) — wired into the capture endpoint; lazy per-match plan check; rule hit stats; beacon can never break
-- [ ] Migration import: CSV old_url,new_url
-- [ ] Migration import: sitemap.xml fetch + auto-match via GraphQL search
-- [ ] Review screen with confidence scores (high/medium/low)
-- [ ] Bulk apply approved rows
+- [x] Migration import: CSV old_url,new_url — old-URL extraction from CSV upload → match via GraphQL search
+- [x] Migration import: sitemap.xml fetch + auto-match via GraphQL search — SSRF-hardened fetch (per user), parse <loc> URLs, batch-match
+- [x] Review screen with confidence scores (high/medium/low) — per-row approve checkboxes, default-approve high/medium, badges
+- [x] Bulk apply approved rows — createRedirect source "migration", plan-cap aware; unit tested
 
 ### Phase 4 — Analytics & alerts
 - [ ] Charts: 404s over time, top missing paths, resolved vs unresolved, redirects created, estimated recovered visits
@@ -64,8 +64,8 @@
 - [ ] Storefront perf impact ≈ 0
 
 ## Current Status
-- **Current phase:** Phase 3 — Differentiators (CSV import/export + pattern rules/auto-heal done; migration importer next). Live verification of Phases 0–3 still pending the store link (user).
-- **Last completed task:** Pattern rules + auto-heal — PatternRule model + pure matcher (wildcard/regex, full-path, case-insensitive, $n substitution) + PRO-gated rules page with live preview; auto-heal wired into the beacon (lazy per-match plan check, materializes native redirect, bumps rule stats, never breaks the beacon). Security: 1 CRITICAL (ReDoS) + 1 HIGH (open-redirect) took FOUR verification rounds — 3 hand-rolled heuristics each bypassed by a sibling shape ((a|a)+ → (a?){30} → (a+a)+). Final: open-redirect closed by resolving targets against a probe origin (WHATWG parser, no blocklist); ReDoS closed by the redos-detector analyzer (pure-JS, server-only, fail-closed, absent from client bundle). Independently re-verified CLOSED across ~50 adversarial patterns; a test-timeout regression the last round caught is also fixed. 192/192 tests green; typecheck/build/lint clean
+- **Current phase:** Phase 3 — Differentiators: CODE-COMPLETE (CSV import/export, pattern rules/auto-heal, migration importer all done + reviewed). Live verification of Phases 0–3 still pending the store link (user).
+- **Last completed task:** Migration importer (MIGRATION-gated) — CSV or SSRF-hardened sitemap fetch → GraphQL search match (products/collections/pages by handle+title) → confidence-scored review table (high/medium default-approved) → bulk apply via createRedirect source "migration". Security: 1 CRITICAL (IPv4-mapped IPv6 ::ffff:7f00:1 reached a real loopback socket — proven) + 1 HIGH (trailing-dot host bypass), same root cause as before: hand-rolled IP regex. Fixed by delegating to ipaddr.js (unicast-only) + IPv4-compatible-IPv6 collapse + trailing-dot strip. Also fixed code-review MEDIUM (rebinding bracket-strip, residual TOCTOU documented) + 2 LOWs (search-slug sanitize, sitemap-index recursion). Awaiting SSRF re-verification. 244/244 tests green; typecheck/build/lint clean
 - **Files created/modified this session:** app/models/{plans.ts,billing.server.ts,redirects.ts,redirects.server.ts,not-found.server.ts,device.ts,rate-limit.server.ts,purge.server.ts} + __tests__, app/routes/{app.plan.tsx,app.redirects.tsx,proxy.404.tsx,app.tsx} + __tests__, app/shopify.server.ts, prisma/schema.prisma (+migration), extensions/notfound-capture/*, shopify.app.toml, PROGRESS.md, DECISIONS.md
 - **Next 3 actions:**
   1. User runs `PATH=/usr/local/opt/node@22/bin:$PATH shopify app dev` → auth, create app "pathmend" in Partner org, pick dev store; then live-test the full Phase 1–2 surface (embedded admin, plan page, Redirects, 404 Log, capture beacon on the dev store's 404 page, webhook triggers)

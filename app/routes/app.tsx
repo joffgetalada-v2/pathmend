@@ -22,6 +22,7 @@ export default function App() {
         <s-link href="/app/notfound">404 Log</s-link>
         <s-link href="/app/redirects">Redirects</s-link>
         <s-link href="/app/import">Import</s-link>
+        <s-link href="/app/migrate">Migrate</s-link>
         <s-link href="/app/plan">Settings &amp; Plan</s-link>
       </s-app-nav>
       <Outlet />
