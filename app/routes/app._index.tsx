@@ -2,6 +2,7 @@ import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
 import { useLoaderData } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
+import { loadWeeklyDigest } from "../models/analytics.server";
 import {
   listNotFoundEvents,
   notFoundStatusCounts,
@@ -12,15 +13,17 @@ import { authenticate } from "../shopify.server";
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
 
-  const [counts, redirectCount, recent] = await Promise.all([
+  const [counts, redirectCount, recent, digest] = await Promise.all([
     notFoundStatusCounts(session.shop),
     countRedirects(session.shop),
     listNotFoundEvents(session.shop, { status: "unresolved", pageSize: 5 }),
+    loadWeeklyDigest(session.shop, new Date()),
   ]);
 
   return {
     counts,
     redirectCount,
+    digest,
     recent: recent.events.map((event) => ({
       id: event.id,
       path: event.path,
@@ -30,7 +33,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function Dashboard() {
-  const { counts, redirectCount, recent } = useLoaderData<typeof loader>();
+  const { counts, redirectCount, recent, digest } =
+    useLoaderData<typeof loader>();
   const hasAnyData =
     counts.unresolved + counts.resolved + counts.ignored + redirectCount > 0;
 
@@ -64,6 +68,29 @@ export default function Dashboard() {
           </s-box>
         </s-grid>
       </s-section>
+
+      {digest.hasActivity && (
+        <s-section heading="This week">
+          <s-paragraph>
+            {digest.periodStart} to {digest.periodEnd}
+          </s-paragraph>
+          <s-stack direction="inline" gap="large">
+            <s-stack direction="block" gap="small-200">
+              <s-heading>{digest.newNotFound}</s-heading>
+              <s-text tone="neutral">new 404s</s-text>
+            </s-stack>
+            <s-stack direction="block" gap="small-200">
+              <s-heading>{digest.redirectsCreated}</s-heading>
+              <s-text tone="neutral">redirects created</s-text>
+            </s-stack>
+            <s-stack direction="block" gap="small-200">
+              <s-heading>{digest.recoveredVisits}</s-heading>
+              <s-text tone="neutral">recovered visits</s-text>
+            </s-stack>
+          </s-stack>
+          <s-link href="/app/analytics">See full analytics</s-link>
+        </s-section>
+      )}
 
       {recent.length > 0 ? (
         <s-section heading="Latest unresolved 404s">

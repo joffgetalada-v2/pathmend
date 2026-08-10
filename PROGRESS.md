@@ -38,8 +38,8 @@
 - [x] Bulk apply approved rows — createRedirect source "migration", plan-cap aware; unit tested
 
 ### Phase 4 — Analytics & alerts
-- [ ] Charts: 404s over time, top missing paths, resolved vs unresolved, redirects created, estimated recovered visits
-- [ ] Weekly in-app digest card
+- [x] Charts: 404s over time, top missing paths, resolved vs unresolved, redirects created, estimated recovered visits — PRO-gated Analytics page, inline SVG bar chart (no chart lib), summary cards + top-paths table; unit tested. Note: "over time" buckets by firstSeenAt (we store deduped rows, not per-hit timestamps) — documented approximation
+- [x] Weekly in-app digest card — trailing-7-day "This week" card on Dashboard (new 404s / redirects created / recovered visits); shown only when there's activity. Email digests are post-launch backlog per spec
 
 ### Phase 5 — Polish
 - [ ] Onboarding 3-step checklist card (app embed deep-link → detect/import → first redirect)
@@ -64,8 +64,8 @@
 - [ ] Storefront perf impact ≈ 0
 
 ## Current Status
-- **Current phase:** Phase 3 — Differentiators: CODE-COMPLETE (CSV import/export, pattern rules/auto-heal, migration importer all done + reviewed). Live verification of Phases 0–3 still pending the store link (user).
-- **Last completed task:** Migration importer (MIGRATION-gated) — CSV or SSRF-hardened sitemap fetch → GraphQL search match (products/collections/pages by handle+title) → confidence-scored review table (high/medium default-approved) → bulk apply via createRedirect source "migration". Security: 1 CRITICAL (IPv4-mapped IPv6 ::ffff:7f00:1 reached a real loopback socket — proven) + 1 HIGH (trailing-dot host bypass), same root cause as before: hand-rolled IP regex. Fixed by delegating to ipaddr.js (unicast-only) + IPv4-compatible-IPv6 collapse + trailing-dot strip. Also fixed code-review MEDIUM (rebinding bracket-strip, residual TOCTOU documented) + 2 LOWs (search-slug sanitize, sitemap-index recursion). Awaiting SSRF re-verification. 244/244 tests green; typecheck/build/lint clean
+- **Current phase:** Phase 4 — Analytics & alerts: CODE-COMPLETE (analytics page + weekly digest card, reviewed). Phases 1–4 fully implemented. Live verification of everything still pending the store link (user). Next: Phase 5 polish.
+- **Last completed task:** Phase 4 analytics — PRO-gated Analytics page (summary cards, inline-SVG day chart, top-paths table) + weekly digest card on the free Dashboard. Reviews: security clean (tenant isolation, plan gate before load, attacker paths render as escaped text and never reach the SVG chart); code review 0 crit/high with 1 MEDIUM (unbounded findMany) — fixed by moving aggregates to a DB groupBy + bounding the window fetch (take 5000), which also made status counts exact over all history. 259/259 tests green; typecheck/build/lint clean
 - **Files created/modified this session:** app/models/{plans.ts,billing.server.ts,redirects.ts,redirects.server.ts,not-found.server.ts,device.ts,rate-limit.server.ts,purge.server.ts} + __tests__, app/routes/{app.plan.tsx,app.redirects.tsx,proxy.404.tsx,app.tsx} + __tests__, app/shopify.server.ts, prisma/schema.prisma (+migration), extensions/notfound-capture/*, shopify.app.toml, PROGRESS.md, DECISIONS.md
 - **Next 3 actions:**
   1. User runs `PATH=/usr/local/opt/node@22/bin:$PATH shopify app dev` → auth, create app "pathmend" in Partner org, pick dev store; then live-test the full Phase 1–2 surface (embedded admin, plan page, Redirects, 404 Log, capture beacon on the dev store's 404 page, webhook triggers)
