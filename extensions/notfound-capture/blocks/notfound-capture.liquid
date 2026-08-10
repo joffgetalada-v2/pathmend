@@ -1,0 +1,39 @@
+{% comment %}
+  404 capture app embed. Renders nothing except on the 404 template, where it
+  emits one tiny inline beacon (~0.4KB, no external requests, no DOM writes,
+  zero layout shift). Skipped in the theme editor so previews don't pollute
+  the merchant's 404 log.
+{% endcomment %}
+{% if request.page_type == '404' and request.design_mode != true %}
+  <script>
+    (function () {
+      try {
+        var payload = JSON.stringify({
+          path: location.pathname + location.search,
+          referrer: document.referrer || null
+        });
+        var url = "/apps/pathmend/404";
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(url, new Blob([payload], { type: "application/json" }));
+        } else {
+          fetch(url, {
+            method: "POST",
+            body: payload,
+            headers: { "Content-Type": "application/json" },
+            keepalive: true
+          });
+        }
+      } catch (e) {
+        /* Never break a storefront over analytics. */
+      }
+    })();
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "404 Capture",
+  "target": "body",
+  "settings": []
+}
+{% endschema %}

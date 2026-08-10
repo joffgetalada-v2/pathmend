@@ -21,8 +21,8 @@
 ### Phase 2 — Core
 - [x] Prisma models (redirects, 404 events, settings) — Redirect / NotFoundEvent / ShopSettings + migration `core-models`; purge coverage extended + tested; `write_online_store_navigation` scope added
 - [x] Redirect CRUD via GraphQL urlRedirect mutations (create/update/delete, paginated list, search) — mutations verified on shopify.dev 2025-10; free-cap enforcement; best-effort DB mirror; Redirects page with search + cursor pagination; unit tested
-- [ ] 404 capture app embed (<5KB, async, zero layout shift, 404 template only)
-- [ ] App Proxy endpoint (store path, referrer, hit count, first/last seen, device type; dedupe by normalized path)
+- [x] 404 capture app embed (<5KB, async, zero layout shift, 404 template only) — inline ~0.4KB sendBeacon in theme app embed; design-mode skipped; live theme test pending store link
+- [x] App Proxy endpoint (store path, referrer, hit count, first/last seen, device type; dedupe by normalized path) — /proxy/404 with signature auth, per-shop rate limit, capture toggle honored; unit tested
 - [ ] Dashboard: "Unresolved 404s" table + one-click Create redirect (pre-filled modal)
 - [ ] Bulk-select fix + mark-ignored
 - [ ] 404 Log UI
@@ -65,10 +65,10 @@
 
 ## Current Status
 - **Current phase:** Phase 1 — Compliance skeleton (GDPR webhooks + billing/gating/plan page done in code). Phase 0 store link still pending user.
-- **Last completed task:** Redirect CRUD — urlRedirect create/update/delete/list verified on shopify.dev 2025-10 and implemented with free-cap enforcement, best-effort DB mirror, search (literal-quoted) + cursor pagination, Redirects page with edit/two-step delete. Reviews: code approved 0 critical/high; security found 1 HIGH (protocol-relative `//host` target bypassed the scheme allowlist → open redirect) — fixed + regression tests. 61/61 tests green; typecheck/build/lint clean
-- **Files created/modified this session:** app/models/plans.ts, app/models/billing.server.ts, app/models/__tests__/plans.test.ts, app/models/__tests__/billing.test.ts, app/shopify.server.ts, app/routes/app.plan.tsx, app/routes/app.tsx, PROGRESS.md, DECISIONS.md
+- **Last completed task:** 404 capture pipeline — theme app embed (~0.4KB inline sendBeacon, 404 template only, design-mode skipped) + /proxy/404 App Proxy endpoint (signature-verified, per-shop rate limit with bucket eviction, 8KB body cap, dedupe with hit counts/first-last seen/device type, capture toggle). Reviews: both approved 0 critical/high; fixed 1 security MEDIUM (unbounded body buffering) + code-review MEDIUM (deviceType lock-in) + LOWs (race-fallback ignored-status, bucket eviction). 89/89 tests green; typecheck/build/lint clean
+- **Files created/modified this session:** app/models/{plans.ts,billing.server.ts,redirects.ts,redirects.server.ts,not-found.server.ts,device.ts,rate-limit.server.ts,purge.server.ts} + __tests__, app/routes/{app.plan.tsx,app.redirects.tsx,proxy.404.tsx,app.tsx} + __tests__, app/shopify.server.ts, prisma/schema.prisma (+migration), extensions/notfound-capture/*, shopify.app.toml, PROGRESS.md, DECISIONS.md
 - **Next 3 actions:**
   1. User runs `PATH=/usr/local/opt/node@22/bin:$PATH shopify app dev` → auth, create app "pathmend" in Partner org, pick dev store, confirm embedded admin loads; then live-test plan page, Redirects CRUD, and webhook triggers
-  2. 404 capture: theme app extension (app embed, <5KB, async, 404 template only) + App Proxy endpoint (dedupe by normalized path, hit counts, device type)
-  3. Dashboard + 404 Log UI: "Unresolved 404s" table, one-click Create redirect (pre-filled), bulk fix, mark-ignored
+  2. Dashboard + 404 Log UI: "Unresolved 404s" table, one-click Create redirect (pre-filled), bulk fix, mark-ignored (render path/referrer as text only — stored attacker-controlled strings)
+  3. Replace template home page with Dashboard; drop `write_products` scope + template demo code once replaced
 - **Blockers/questions:** Store link is the only user-blocked step. Decide manual Billing API vs Managed Pricing before submission (manual implemented; switch is cheap — see DECISIONS.md 2026-08-10). `npm audit` findings in template deps parked until pre-ship audit.
