@@ -17,6 +17,7 @@ export async function purgeShopData(shop: string): Promise<void> {
     db.redirect.deleteMany({ where: { shop } }),
     db.notFoundEvent.deleteMany({ where: { shop } }),
     db.shopSettings.deleteMany({ where: { shop } }),
+    db.patternRule.deleteMany({ where: { shop } }),
     db.session.deleteMany({ where: { shop } }),
   ]);
 }

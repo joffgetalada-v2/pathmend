@@ -55,6 +55,26 @@ model ShopSettings {
   captureEnabled Boolean @default(true)
 }
 
+// Wildcard/regex rules that auto-heal new 404s into concrete native
+// redirects. The rule itself never serves traffic — matches always
+// materialize a real Shopify urlRedirect (source "auto_heal").
+model PatternRule {
+  id            String    @id @default(cuid())
+  shop          String
+  // wildcard | regex
+  kind          String
+  pattern       String
+  target        String
+  enabled       Boolean   @default(true)
+  // Count of redirects materialized from this rule.
+  hits          Int       @default(0)
+  lastMatchedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([shop, enabled])
+}
+
 model Session {
   id            String    @id
   shop          String

@@ -13,10 +13,17 @@ vi.mock("../../models/not-found.server", () => ({
     recordNotFoundEvent(shop, report),
 }));
 
+const autoHealNotFound = vi.fn();
+vi.mock("../../models/patterns.server", () => ({
+  autoHealNotFound: (admin: unknown, shop: string, path: string) =>
+    autoHealNotFound(admin, shop, path),
+}));
+
 import { action, loader } from "../proxy.404";
 
 // Unique shop per test file run — the rate limiter keeps module-level state.
 const SHOP = `proxy-test-${Math.floor(Math.random() * 1e9)}.myshopify.com`;
+const ADMIN = { graphql: vi.fn() };
 
 const makeRequest = (body: unknown, init?: RequestInit) =>
   new Request("https://app.example.com/proxy/404", {
@@ -30,8 +37,9 @@ const makeArgs = (request: Request) => ({ request, params: {}, context: {} });
 
 beforeEach(() => {
   vi.clearAllMocks();
-  appProxy.mockResolvedValue({ session: { shop: SHOP } });
+  appProxy.mockResolvedValue({ session: { shop: SHOP }, admin: ADMIN });
   recordNotFoundEvent.mockResolvedValue("recorded");
+  autoHealNotFound.mockResolvedValue("no_rules");
 });
 
 describe("proxy 404 action", () => {
@@ -124,6 +132,39 @@ describe("proxy 404 action", () => {
     const response = await action(makeArgs(makeRequest({ path: "/" })) as never);
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe("proxy 404 auto-heal", () => {
+  test("attempts auto-heal with the normalized path after recording", async () => {
+    const response = await action(
+      makeArgs(makeRequest({ path: "/Blog/Old-Post/" })) as never,
+    );
+
+    expect(response.status).toBe(204);
+    expect(autoHealNotFound).toHaveBeenCalledWith(
+      ADMIN,
+      SHOP,
+      "/blog/old-post",
+    );
+  });
+
+  test("skips auto-heal when the event wasn't recorded", async () => {
+    recordNotFoundEvent.mockResolvedValue("capture_disabled");
+
+    await action(makeArgs(makeRequest({ path: "/x" })) as never);
+
+    expect(autoHealNotFound).not.toHaveBeenCalled();
+  });
+
+  test("an auto-heal crash never breaks the beacon response", async () => {
+    autoHealNotFound.mockRejectedValue(new Error("boom"));
+
+    const response = await action(
+      makeArgs(makeRequest({ path: "/x" })) as never,
+    );
+
+    expect(response.status).toBe(204);
   });
 });
 

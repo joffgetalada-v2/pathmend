@@ -264,6 +264,9 @@ export default function RedirectsPage() {
           <s-button href="/app/import" variant="tertiary">
             Import CSV
           </s-button>
+          <s-button href="/app/patterns" variant="tertiary">
+            Pattern rules
+          </s-button>
           <s-search-field
             label="Search redirects"
             labelAccessibilityVisibility="exclusive"

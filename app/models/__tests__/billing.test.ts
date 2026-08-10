@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   billingConfig,
   getPlanContext,
+  getPlanViaAdmin,
   isBillingTest,
   requireFeature,
 } from "../billing.server";
@@ -137,6 +138,51 @@ describe("requireFeature", () => {
       "pattern_rules",
     );
     expect(context.plan).toBe(PLAN_PRO);
+  });
+});
+
+describe("getPlanViaAdmin", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  const adminWith = (
+    subscriptions: { name: string; test: boolean; status: string }[],
+  ) => ({
+    graphql: vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          data: {
+            currentAppInstallation: { activeSubscriptions: subscriptions },
+          },
+        }),
+      ),
+    ),
+  });
+
+  test("resolves the plan from active subscription names", async () => {
+    const admin = adminWith([
+      { name: PRO_PLAN_NAME, test: true, status: "ACTIVE" },
+    ]);
+    expect(await getPlanViaAdmin(admin)).toBe(PLAN_PRO);
+  });
+
+  test("ignores test subscriptions in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("BILLING_TEST_MODE", "");
+    const admin = adminWith([
+      { name: PRO_PLAN_NAME, test: true, status: "ACTIVE" },
+    ]);
+    expect(await getPlanViaAdmin(admin)).toBe(PLAN_FREE);
+  });
+
+  test("returns free when the query yields nothing", async () => {
+    const admin = {
+      graphql: vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ data: {} }))),
+    };
+    expect(await getPlanViaAdmin(admin)).toBe(PLAN_FREE);
   });
 });
 

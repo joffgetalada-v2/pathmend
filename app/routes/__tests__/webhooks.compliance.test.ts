@@ -11,6 +11,7 @@ const deleteManySessions = vi.fn();
 const deleteManyRedirects = vi.fn();
 const deleteManyNotFoundEvents = vi.fn();
 const deleteManyShopSettings = vi.fn();
+const deleteManyPatternRules = vi.fn();
 const transaction = vi.fn(async (ops: unknown[]) => ops);
 vi.mock("../../db.server", () => ({
   default: {
@@ -21,6 +22,9 @@ vi.mock("../../db.server", () => ({
     },
     shopSettings: {
       deleteMany: (args: unknown) => deleteManyShopSettings(args),
+    },
+    patternRule: {
+      deleteMany: (args: unknown) => deleteManyPatternRules(args),
     },
     $transaction: (ops: unknown[]) => transaction(ops),
   },
@@ -92,6 +96,9 @@ describe("shop/redact", () => {
       where: { shop: SHOP },
     });
     expect(deleteManyShopSettings).toHaveBeenCalledWith({
+      where: { shop: SHOP },
+    });
+    expect(deleteManyPatternRules).toHaveBeenCalledWith({
       where: { shop: SHOP },
     });
     expect(transaction).toHaveBeenCalledTimes(1);

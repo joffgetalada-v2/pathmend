@@ -15,6 +15,44 @@ export interface RedirectInputError {
 
 const ALLOWED_TARGET_PROTOCOLS = ["http:", "https:"];
 
+// A literal embedded scheme (http://, mailto:) or "//" run in a value meant
+// to be a same-origin path. This is a tidiness rule — URL-looking paths are
+// confusing in the redirect list — NOT the security boundary; that's
+// relativeTargetEscapesOrigin below.
+const EMBEDDED_URL = /\/\/|[a-z][a-z0-9+.-]*:\/\//i;
+
+/** True when a relative-path target visibly contains a URL. */
+export function hasEmbeddedUrl(target: string): boolean {
+  return EMBEDDED_URL.test(target);
+}
+
+/** True when the target is a well-formed absolute http(s) URL. */
+export function isAbsoluteHttpUrl(target: string): boolean {
+  try {
+    return ALLOWED_TARGET_PROTOCOLS.includes(new URL(target).protocol);
+  } catch {
+    return false;
+  }
+}
+
+// Any origin works; .invalid guarantees it never collides with a real host.
+const ORIGIN_PROBE = "https://pathmend-target-probe.invalid";
+
+/**
+ * The authoritative open-redirect gate: resolve the target as the browser
+ * would and reject it if it lands on a different origin. This delegates all
+ * of WHATWG's normalization (backslash→slash, tab/newline/CR stripping,
+ * protocol-relative handling) to the spec parser instead of a blocklist —
+ * closing the whole class of escape tricks at once.
+ */
+export function relativeTargetEscapesOrigin(target: string): boolean {
+  try {
+    return new URL(target, `${ORIGIN_PROBE}/`).origin !== ORIGIN_PROBE;
+  } catch {
+    return true; // unparseable → refuse
+  }
+}
+
 /**
  * Normalizes a merchant-entered path: trims, unwraps full URLs (merchants
  * paste old-site URLs during migrations), and guarantees a leading slash.
@@ -60,30 +98,25 @@ export function validateRedirectInput(
     return errors;
   }
 
-  // "//host" looks like a relative path but browsers resolve it to
-  // https://host — an open-redirect bypass of the scheme allowlist below.
-  if (target.startsWith("//")) {
-    errors.push({
-      field: "target",
-      message:
-        "Use a full URL (https://…) to send visitors to another site.",
-    });
-    return errors;
-  }
-
-  if (!target.startsWith("/")) {
-    let isValidAbsolute = false;
-    try {
-      const url = new URL(target);
-      isValidAbsolute = ALLOWED_TARGET_PROTOCOLS.includes(url.protocol);
-    } catch {
-      isValidAbsolute = false;
-    }
-    if (!isValidAbsolute) {
+  // An absolute http(s) URL is always allowed (redirects may point off-site).
+  if (!isAbsoluteHttpUrl(target)) {
+    // Otherwise it must be a same-origin path. Resolving against a probe
+    // origin covers "//host", "/\host", "/<tab>/host" and every other WHATWG
+    // escape trick in one spec-compliant check — no blocklist to outgrow.
+    if (!target.startsWith("/") || relativeTargetEscapesOrigin(target)) {
       errors.push({
         field: "target",
         message:
           "The destination must be a path like /collections/all or a full http(s) URL.",
+      });
+      return errors;
+    }
+    // Same-origin but still URL-shaped (/news/https://evil.com) — reject for
+    // clarity, since machine-substituted targets can produce these.
+    if (hasEmbeddedUrl(target)) {
+      errors.push({
+        field: "target",
+        message: "The destination path can't contain another URL.",
       });
       return errors;
     }

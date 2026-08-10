@@ -107,6 +107,38 @@ export async function getPlanContext(
   return { plan, subscription };
 }
 
+const ACTIVE_SUBSCRIPTIONS_QUERY = `#graphql
+  query PathmendActiveSubscriptions {
+    currentAppInstallation {
+      activeSubscriptions { id name test status }
+    }
+  }`;
+
+/**
+ * Plan resolution for contexts without the billing helper (the app proxy
+ * exposes only an admin client). Mirrors getPlanContext's test-subscription
+ * semantics. One extra GraphQL call — callers should invoke it lazily.
+ */
+export async function getPlanViaAdmin(admin: {
+  graphql: (query: string, options?: object) => Promise<Response>;
+}): Promise<PlanId> {
+  const response = await admin.graphql(ACTIVE_SUBSCRIPTIONS_QUERY);
+  const json = (await response.json()) as {
+    data?: {
+      currentAppInstallation?: {
+        activeSubscriptions?: { name: string; test: boolean; status: string }[];
+      };
+    };
+  };
+  const subscriptions =
+    json.data?.currentAppInstallation?.activeSubscriptions ?? [];
+  const includeTest = isBillingTest();
+  const names = subscriptions
+    .filter((s) => s.status === "ACTIVE" && (includeTest || !s.test))
+    .map((s) => s.name);
+  return resolvePlan(names);
+}
+
 /**
  * Plan gating for loaders/actions: resolves the shop's plan and redirects to
  * the plan page when the feature isn't included. Usage:

@@ -1,7 +1,9 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { deviceTypeFromUserAgent } from "../models/device";
+import { normalize404Path } from "../models/not-found";
 import { recordNotFoundEvent } from "../models/not-found.server";
+import { autoHealNotFound } from "../models/patterns.server";
 import { allowCapture } from "../models/rate-limit.server";
 import { authenticate } from "../shopify.server";
 
@@ -16,7 +18,7 @@ const MAX_BODY_BYTES = 8 * 1024;
  * storefront visitors must never see app internals.
  */
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const { session } = await authenticate.public.appProxy(request);
+  const { session, admin } = await authenticate.public.appProxy(request);
   // Valid signature but no offline session (e.g. mid-uninstall): drop quietly.
   if (!session) {
     return new Response(null, { status: 204 });
@@ -60,6 +62,19 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     referrer: typeof referrer === "string" ? referrer : null,
     deviceType: deviceTypeFromUserAgent(request.headers.get("user-agent")),
   });
+
+  if (result === "recorded" && admin) {
+    const normalized = normalize404Path(path);
+    if (normalized) {
+      try {
+        // Auto-heal: a matching pattern rule materializes a real redirect.
+        // Never let it affect the beacon response.
+        await autoHealNotFound(admin, session.shop, normalized);
+      } catch (error) {
+        console.error("auto-heal failed", error);
+      }
+    }
+  }
 
   return new Response(null, { status: result === "invalid" ? 400 : 204 });
 };

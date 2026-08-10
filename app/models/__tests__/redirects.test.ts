@@ -92,6 +92,42 @@ describe("validateRedirectInput", () => {
     }
   });
 
+  test("rejects an embedded scheme or // later in a relative target", () => {
+    // Machine-substituted targets (auto-heal) can produce these; they read
+    // as URL-in-path and must not be stored.
+    for (const target of [
+      "/news/https://evil.com",
+      "/news//evil.com",
+      "/go/HTTP://evil.com",
+    ]) {
+      const errors = validateRedirectInput({ path: "/old", target });
+      expect(errors.some((e) => e.field === "target")).toBe(true);
+    }
+  });
+
+  test("rejects any relative target that resolves cross-origin", () => {
+    // WHATWG strips \, tab, LF, CR when resolving, so all of these escape the
+    // origin. Delegating to the URL parser covers the whole class, not a
+    // hand-maintained blocklist of escape tricks.
+    for (const target of [
+      "/\\evil.com",
+      "\\/evil.com",
+      "/\\/evil.com",
+      "/\t/evil.com",
+      "/\n/evil.com",
+      "/\r/evil.com",
+    ]) {
+      const errors = validateRedirectInput({ path: "/old", target });
+      expect(errors.some((e) => e.field === "target")).toBe(true);
+    }
+  });
+
+  test("still accepts ordinary relative paths with a single slash structure", () => {
+    expect(
+      validateRedirectInput({ path: "/old", target: "/news/2023/post" }),
+    ).toEqual([]);
+  });
+
   test("allows an absolute target whose path matches the redirect path", () => {
     // Different host — not a loop even though the paths match.
     expect(
