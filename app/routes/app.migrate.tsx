@@ -15,8 +15,12 @@ import {
   type UrlMatch,
 } from "../models/migration";
 import { matchOldUrls } from "../models/migration.match.server";
-import { fetchSitemapText } from "../models/migration.server";
+import {
+  fetchSitemapText,
+  isMerchantSafeError,
+} from "../models/migration.server";
 import { planHasFeature } from "../models/plans";
+import { capitalize } from "../models/plural";
 import {
   createRedirect,
   type MutationError,
@@ -122,12 +126,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       try {
         urls = await collectSitemapUrls(sitemapUrl);
       } catch (error) {
+        // The SSRF/URL guards throw merchant-safe messages on purpose; keep
+        // those, but never surface a raw network/parse error.
+        console.error("sitemap fetch failed", error);
         return {
           status: "error" as const,
-          message:
-            error instanceof Error
-              ? error.message
-              : "Couldn't fetch that sitemap.",
+          message: isMerchantSafeError(error)
+            ? error.message
+            : "We couldn't fetch that sitemap. Check the URL is public and ends in .xml.",
         };
       }
       if (urls.length === 0) {
@@ -323,7 +329,10 @@ export default function MigratePage() {
           heading={`Review ${matches.length} matches (${approvedCount} approved)`}
         >
           {matches.length === 0 ? (
-            <s-paragraph>No matches found.</s-paragraph>
+            <s-paragraph>
+              We couldn&apos;t match any of those URLs to your store. Check
+              they&apos;re from your old site, or add redirects manually.
+            </s-paragraph>
           ) : (
             <>
               <s-table>
@@ -372,7 +381,7 @@ export default function MigratePage() {
                       <s-table-cell>
                         {match.confidence ? (
                           <s-badge tone={CONFIDENCE_TONE[match.confidence]}>
-                            {match.confidence}
+                            {capitalize(match.confidence)}
                           </s-badge>
                         ) : (
                           "—"

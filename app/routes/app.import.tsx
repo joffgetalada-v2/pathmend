@@ -90,7 +90,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!rows) {
         return {
           status: "error" as const,
-          message: "Nothing valid to import — run the preview again.",
+          message:
+            "No valid rows found. Check each row has an old URL and a destination, then try again.",
         };
       }
       const { plan } = await getPlanContext(billing);

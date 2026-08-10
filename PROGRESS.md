@@ -42,11 +42,11 @@
 - [x] Weekly in-app digest card — trailing-7-day "This week" card on Dashboard (new 404s / redirects created / recovered visits); shown only when there's activity. Email digests are post-launch backlog per spec
 
 ### Phase 5 — Polish
-- [ ] Onboarding 3-step checklist card (app embed deep-link → detect/import → first redirect)
-- [ ] Empty states for every screen
-- [ ] Performance pass (storefront ≈ 0, admin CLS < 0.1, Lighthouse-clean)
-- [ ] Accessibility pass (keyboard, aria, responsive)
-- [ ] Microcopy pass (merchant-friendly, no jargon)
+- [x] Onboarding 3-step checklist card (app embed deep-link → detect/import → first redirect) — evidence-based completion (captured 404 → embed live; redirect → first value); theme-editor deep-link with graceful fallback; shown only while incomplete; unit tested
+- [x] Empty states for every screen — audited all 8 routes; jargon-in-empty-states fixed ("app embed"/"capture embed" → "404 tracking")
+- [ ] Performance pass (storefront ≈ 0, admin CLS < 0.1, Lighthouse-clean) — needs running store (deferred until store link)
+- [ ] Accessibility pass (keyboard, aria, responsive) — needs browser (deferred until store link)
+- [x] Microcopy pass (merchant-friendly, no jargon) — agent audit → applied high-impact fixes: unified "broken link" vocabulary, killed internal terms (app embed/capture embed/auto-heal-as-"healed"), natural pluralization (pluralize helper), capitalized enum badges, actionable dead-end messages, SitemapUrlError so only merchant-safe errors surface. Declined spec-defined names (Settings & Plan, Pattern rules) per CLAUDE.md §7 IA
 
 ### Phase 6 — Ship
 - [ ] Seed demo data in dev store
@@ -64,7 +64,7 @@
 - [ ] Storefront perf impact ≈ 0
 
 ## Current Status
-- **Current phase:** Phase 4 — Analytics & alerts: CODE-COMPLETE (analytics page + weekly digest card, reviewed). Phases 1–4 fully implemented. Live verification of everything still pending the store link (user). Next: Phase 5 polish.
+- **Current phase:** Phase 5 — Polish: code-verifiable parts DONE (onboarding checklist, empty states, microcopy). Perf + accessibility passes DEFERRED to the store link (need a browser). Phases 1–4 + Phase 5 code parts complete. Next: Phase 6 shippable artifacts (code-auditable parts), then everything live once store is linked.
 - **Last completed task:** Phase 4 analytics — PRO-gated Analytics page (summary cards, inline-SVG day chart, top-paths table) + weekly digest card on the free Dashboard. Reviews: security clean (tenant isolation, plan gate before load, attacker paths render as escaped text and never reach the SVG chart); code review 0 crit/high with 1 MEDIUM (unbounded findMany) — fixed by moving aggregates to a DB groupBy + bounding the window fetch (take 5000), which also made status counts exact over all history. 259/259 tests green; typecheck/build/lint clean
 - **Files created/modified this session:** app/models/{plans.ts,billing.server.ts,redirects.ts,redirects.server.ts,not-found.server.ts,device.ts,rate-limit.server.ts,purge.server.ts} + __tests__, app/routes/{app.plan.tsx,app.redirects.tsx,proxy.404.tsx,app.tsx} + __tests__, app/shopify.server.ts, prisma/schema.prisma (+migration), extensions/notfound-capture/*, shopify.app.toml, PROGRESS.md, DECISIONS.md
 - **Next 3 actions:**

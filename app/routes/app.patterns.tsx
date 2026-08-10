@@ -21,6 +21,7 @@ import {
   setPatternRuleEnabled,
 } from "../models/patterns.server";
 import { planHasFeature } from "../models/plans";
+import { capitalize } from "../models/plural";
 import { authenticate } from "../shopify.server";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
@@ -234,8 +235,8 @@ export default function PatternRulesPage() {
       <s-section heading="Your rules">
         {rules.length === 0 ? (
           <s-paragraph>
-            No rules yet. Create one above — it starts healing matching 404s
-            immediately.
+            No rules yet. Add one above and it&apos;ll start fixing matching
+            broken links right away.
           </s-paragraph>
         ) : (
           <s-table>
@@ -243,7 +244,7 @@ export default function PatternRulesPage() {
               <s-table-header>Type</s-table-header>
               <s-table-header>Pattern</s-table-header>
               <s-table-header>Redirects to</s-table-header>
-              <s-table-header>Healed</s-table-header>
+              <s-table-header>Fixes made</s-table-header>
               <s-table-header>Active</s-table-header>
               <s-table-header></s-table-header>
             </s-table-header-row>
@@ -251,7 +252,7 @@ export default function PatternRulesPage() {
               {rules.map((rule) => (
                 <s-table-row key={rule.id}>
                   <s-table-cell>
-                    <s-badge>{rule.kind}</s-badge>
+                    <s-badge>{capitalize(rule.kind)}</s-badge>
                   </s-table-cell>
                   <s-table-cell>{rule.pattern}</s-table-cell>
                   <s-table-cell>{rule.target}</s-table-cell>

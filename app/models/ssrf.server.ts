@@ -15,6 +15,18 @@ import ipaddr from "ipaddr.js";
  * validated IP and never follows redirects.
  */
 
+/**
+ * A URL/host rejection whose message is safe to show the merchant (it names
+ * the rule, not internal detail). Network/parse errors are NOT this type, so
+ * callers can surface only these directly.
+ */
+export class SitemapUrlError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SitemapUrlError";
+  }
+}
+
 const BLOCKED_HOSTNAMES = new Set(["localhost"]);
 const BLOCKED_TLDS = [".local", ".internal", ".localhost"];
 
@@ -89,16 +101,16 @@ export function assertPublicHttpUrl(rawUrl: string): URL {
   try {
     url = new URL(rawUrl);
   } catch {
-    throw new Error("Enter a valid URL.");
+    throw new SitemapUrlError("Enter a valid URL.");
   }
   if (url.protocol !== "https:") {
-    throw new Error("The sitemap URL must start with https://.");
+    throw new SitemapUrlError("The sitemap URL must start with https://.");
   }
   if (url.username !== "" || url.password !== "") {
-    throw new Error("The sitemap URL can't include credentials.");
+    throw new SitemapUrlError("The sitemap URL can't include credentials.");
   }
   if (isBlockedHost(url.hostname)) {
-    throw new Error("That host isn't allowed.");
+    throw new SitemapUrlError("That host isn't allowed.");
   }
   return url;
 }

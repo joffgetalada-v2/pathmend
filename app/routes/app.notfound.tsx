@@ -14,6 +14,7 @@ import { useAppBridge } from "@shopify/app-bridge-react";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { getPlanContext } from "../models/billing.server";
+import { pluralize } from "../models/plural";
 import {
   NOT_FOUND_STATUSES,
   type NotFoundStatus,
@@ -117,7 +118,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       if (!paths) {
         return {
           status: "error" as const,
-          message: `Select 1–${MAX_BULK_FIX} paths to fix.`,
+          message: `Select at least one broken link (up to ${MAX_BULK_FIX}) to fix.`,
         };
       }
       const { plan } = await getPlanContext(billing);
@@ -144,7 +145,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (intent === "ignore" || intent === "unignore") {
       const ids = parseStringArray(String(formData.get("ids") ?? ""), 250);
       if (!ids) {
-        return { status: "error" as const, message: "Select rows first." };
+        return {
+          status: "error" as const,
+          message: "Select at least one broken link first.",
+        };
       }
       const count = await setNotFoundStatus(
         shop,
@@ -223,13 +227,15 @@ export default function NotFoundLogPage() {
       shopify.toast.show(
         bulkFailed.length > 0
           ? `${result.created} created, ${bulkFailed.length} failed`
-          : `${result.created} redirect(s) created`,
+          : `${pluralize(result.created ?? 0, "redirect")} created`,
       );
     }
     if (status === "status_updated" && "count" in result) {
-      shopify.toast.show(
-        `${result.count} item(s) ${"intent" in result && result.intent === "ignore" ? "ignored" : "restored"}`,
-      );
+      const verb =
+        "intent" in result && result.intent === "ignore"
+          ? "ignored"
+          : "restored";
+      shopify.toast.show(`${pluralize(result.count ?? 0, "link")} ${verb}`);
     }
   }, [result, status, shopify]);
 
@@ -297,7 +303,9 @@ export default function NotFoundLogPage() {
           <s-unordered-list>
             {bulkFailed.map((failure) => (
               <s-list-item key={failure.path}>
-                {failure.path} — {failure.errors[0]?.message ?? "invalid"}
+                {failure.path} —{" "}
+                {failure.errors[0]?.message ??
+                  "couldn't be created — check the destination"}
               </s-list-item>
             ))}
           </s-unordered-list>
@@ -407,8 +415,8 @@ export default function NotFoundLogPage() {
         {data.events.length === 0 ? (
           <s-paragraph>
             {data.status === "unresolved"
-              ? "No unresolved 404s — either your store is healthy or the capture embed isn't enabled yet."
-              : `No ${data.status} 404s.`}
+              ? "No unresolved broken links. Either your store is healthy, or 404 tracking isn't turned on yet."
+              : `No ${data.status} broken links.`}
           </s-paragraph>
         ) : (
           <s-table

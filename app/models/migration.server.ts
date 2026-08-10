@@ -1,6 +1,10 @@
 import { lookup } from "node:dns/promises";
 
-import { assertPublicHttpUrl, isBlockedHost } from "./ssrf.server";
+import {
+  SitemapUrlError,
+  assertPublicHttpUrl,
+  isBlockedHost,
+} from "./ssrf.server";
 
 /**
  * SSRF-hardened sitemap fetch. Layered defenses:
@@ -21,6 +25,11 @@ const DEFAULT_TIMEOUT_MS = 8000;
 export interface FetchSitemapDeps {
   resolve: (host: string) => Promise<string[]>;
   fetchImpl: typeof fetch;
+}
+
+/** True when an error's message is safe to show the merchant verbatim. */
+export function isMerchantSafeError(error: unknown): error is SitemapUrlError {
+  return error instanceof SitemapUrlError;
 }
 
 const defaultResolve = async (host: string): Promise<string[]> => {
@@ -44,7 +53,7 @@ const readCapped = async (
       total += value.byteLength;
       if (total > maxBytes) {
         await reader.cancel();
-        throw new Error("The sitemap is too large.");
+        throw new SitemapUrlError("The sitemap is too large.");
       }
       chunks.push(value);
     }
@@ -82,11 +91,11 @@ export async function fetchSitemapText(
   const resolveHost = url.hostname.replace(/^\[|\]$/g, "");
   const addresses = await deps.resolve(resolveHost);
   if (addresses.length === 0) {
-    throw new Error("That host could not be resolved.");
+    throw new SitemapUrlError("That host could not be resolved.");
   }
   for (const address of addresses) {
     if (isBlockedHost(address)) {
-      throw new Error("That host resolves to a blocked address.");
+      throw new SitemapUrlError("That host resolves to a blocked address.");
     }
   }
 
@@ -101,17 +110,17 @@ export async function fetchSitemapText(
     });
 
     if (response.status >= 300 && response.status < 400) {
-      throw new Error("The sitemap URL redirects; enter the final URL.");
+      throw new SitemapUrlError("The sitemap URL redirects; enter the final URL.");
     }
     if (!response.ok) {
-      throw new Error(`The sitemap couldn't be loaded (${response.status}).`);
+      throw new SitemapUrlError(`The sitemap couldn't be loaded (${response.status}).`);
     }
 
     const declaredLength = Number(
       response.headers.get("content-length") ?? "0",
     );
     if (declaredLength > maxBytes) {
-      throw new Error("The sitemap is too large.");
+      throw new SitemapUrlError("The sitemap is too large.");
     }
 
     return await readCapped(response, maxBytes);

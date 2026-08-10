@@ -4,6 +4,10 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { loadWeeklyDigest } from "../models/analytics.server";
 import {
+  isOnboardingComplete,
+  onboardingSteps,
+} from "../models/onboarding";
+import {
   listNotFoundEvents,
   notFoundStatusCounts,
 } from "../models/not-found.server";
@@ -20,10 +24,23 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     loadWeeklyDigest(session.shop, new Date()),
   ]);
 
+  const onboardingState = {
+    hasCaptured404:
+      counts.unresolved + counts.resolved + counts.ignored > 0,
+    hasRedirect: redirectCount > 0,
+  };
+
   return {
     counts,
     redirectCount,
     digest,
+    onboarding: isOnboardingComplete(onboardingState)
+      ? null
+      : onboardingSteps(onboardingState, {
+          shop: session.shop,
+          // eslint-disable-next-line no-undef
+          themeExtensionId: process.env.SHOPIFY_THEME_EXTENSION_ID,
+        }),
     recent: recent.events.map((event) => ({
       id: event.id,
       path: event.path,
@@ -33,13 +50,44 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function Dashboard() {
-  const { counts, redirectCount, recent, digest } =
+  const { counts, redirectCount, recent, digest, onboarding } =
     useLoaderData<typeof loader>();
   const hasAnyData =
     counts.unresolved + counts.resolved + counts.ignored + redirectCount > 0;
 
   return (
     <s-page heading="Dashboard">
+      {onboarding && (
+        <s-section heading="Get started in 3 steps">
+          <s-stack direction="block" gap="base">
+            {onboarding.map((step, index) => (
+              <s-box
+                key={step.key}
+                padding="base"
+                borderWidth="base"
+                borderRadius="base"
+                {...(step.done ? { background: "subdued" } : {})}
+              >
+                <s-stack direction="block" gap="small-200">
+                  <s-stack direction="inline" gap="base">
+                    <s-badge tone={step.done ? "success" : "neutral"}>
+                      {step.done ? "Done" : `Step ${index + 1}`}
+                    </s-badge>
+                    <s-heading>{step.title}</s-heading>
+                  </s-stack>
+                  <s-paragraph>{step.description}</s-paragraph>
+                  {!step.done && (
+                    <s-button href={step.action.href} variant="tertiary">
+                      {step.action.label}
+                    </s-button>
+                  )}
+                </s-stack>
+              </s-box>
+            ))}
+          </s-stack>
+        </s-section>
+      )}
+
       <s-section heading="At a glance">
         <s-grid
           gridTemplateColumns="repeat(auto-fit, minmax(180px, 1fr))"
@@ -109,15 +157,15 @@ export default function Dashboard() {
             </s-table-body>
           </s-table>
           <s-button href="/app/notfound" variant="primary">
-            Fix them in the 404 log
+            Fix these in the 404 log
           </s-button>
         </s-section>
       ) : (
         <s-section heading={hasAnyData ? "All caught up" : "Get set up"}>
           <s-paragraph>
             {hasAnyData
-              ? "No unresolved 404s right now. New ones will appear here as visitors hit missing pages."
-              : "No 404s captured yet. Enable the Pathmend 404 Capture app embed in your theme editor, and broken URLs will start appearing here automatically."}
+              ? "No unresolved broken links right now. New ones appear here as visitors hit missing pages."
+              : "No broken links found yet. Turn on 404 tracking in your theme editor and they'll start appearing here automatically."}
           </s-paragraph>
         </s-section>
       )}

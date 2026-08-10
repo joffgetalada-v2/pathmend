@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { assertPublicHttpUrl, isBlockedHost } from "../ssrf.server";
+import {
+  SitemapUrlError,
+  assertPublicHttpUrl,
+  isBlockedHost,
+} from "../ssrf.server";
 
 describe("isBlockedHost", () => {
   test("blocks loopback", () => {
@@ -119,5 +123,11 @@ describe("assertPublicHttpUrl", () => {
 
   test("rejects unparseable input", () => {
     expect(() => assertPublicHttpUrl("not a url")).toThrow();
+  });
+
+  test("throws a merchant-safe SitemapUrlError", () => {
+    expect(() => assertPublicHttpUrl("http://old-site.com/x")).toThrow(
+      SitemapUrlError,
+    );
   });
 });

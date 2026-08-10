@@ -123,7 +123,7 @@ export default function AnalyticsPage() {
       <s-section heading={`New 404s over the last ${days} days`}>
         {summary.totalHits === 0 ? (
           <s-paragraph>
-            No 404s captured yet. Once the app embed is enabled, broken URLs
+            No broken links tracked yet. Turn on 404 tracking and your traffic
             will chart here.
           </s-paragraph>
         ) : (
@@ -133,7 +133,7 @@ export default function AnalyticsPage() {
 
       <s-section heading="Top missing paths">
         {topPaths.length === 0 ? (
-          <s-paragraph>No missing paths recorded yet.</s-paragraph>
+          <s-paragraph>No broken links recorded yet.</s-paragraph>
         ) : (
           <s-table>
             <s-table-header-row>
