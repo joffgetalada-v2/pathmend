@@ -23,9 +23,9 @@
 - [x] Redirect CRUD via GraphQL urlRedirect mutations (create/update/delete, paginated list, search) — mutations verified on shopify.dev 2025-10; free-cap enforcement; best-effort DB mirror; Redirects page with search + cursor pagination; unit tested
 - [x] 404 capture app embed (<5KB, async, zero layout shift, 404 template only) — inline ~0.4KB sendBeacon in theme app embed; design-mode skipped; live theme test pending store link
 - [x] App Proxy endpoint (store path, referrer, hit count, first/last seen, device type; dedupe by normalized path) — /proxy/404 with signature auth, per-shop rate limit, capture toggle honored; unit tested
-- [ ] Dashboard: "Unresolved 404s" table + one-click Create redirect (pre-filled modal)
-- [ ] Bulk-select fix + mark-ignored
-- [ ] 404 Log UI
+- [x] Dashboard: "Unresolved 404s" table + one-click Create redirect (pre-filled modal) — Dashboard stat cards + latest-unresolved list; one-click Fix pre-fills the path in the 404 Log fix card
+- [x] Bulk-select fix + mark-ignored — row checkboxes, bulk fix to one target (stops at plan cap), ignore/restore, tenant-scoped
+- [x] 404 Log UI — status tabs with counts, path search, offset pagination, per-row fix
 
 ### Phase 3 — Differentiators
 - [ ] Bulk CSV import/export (validate, dry-run preview, error report)
@@ -64,11 +64,12 @@
 - [ ] Storefront perf impact ≈ 0
 
 ## Current Status
-- **Current phase:** Phase 1 — Compliance skeleton (GDPR webhooks + billing/gating/plan page done in code). Phase 0 store link still pending user.
-- **Last completed task:** 404 capture pipeline — theme app embed (~0.4KB inline sendBeacon, 404 template only, design-mode skipped) + /proxy/404 App Proxy endpoint (signature-verified, per-shop rate limit with bucket eviction, 8KB body cap, dedupe with hit counts/first-last seen/device type, capture toggle). Reviews: both approved 0 critical/high; fixed 1 security MEDIUM (unbounded body buffering) + code-review MEDIUM (deviceType lock-in) + LOWs (race-fallback ignored-status, bucket eviction). 89/89 tests green; typecheck/build/lint clean
+- **Current phase:** Phase 2 — Core: CODE-COMPLETE. Phases 1–2 fully implemented and reviewed; live verification of everything still pending the Phase 0 store link (user).
+- **Last completed task:** Dashboard + 404 Log UI — status tabs with counts, search, pagination, one-click Fix (pre-filled), bulk fix with per-path failure reporting + retry, ignore/restore; template home replaced with Dashboard (stat cards + latest unresolved); `write_products` scope dropped. Reviews: both approved 0 critical/high; applied 2 MEDIUMs (bulk-failure surfacing, Postgres-safe lowercased search) + LOW page clamp + crafted-path regression test. 104/104 tests green; typecheck/build/lint clean
 - **Files created/modified this session:** app/models/{plans.ts,billing.server.ts,redirects.ts,redirects.server.ts,not-found.server.ts,device.ts,rate-limit.server.ts,purge.server.ts} + __tests__, app/routes/{app.plan.tsx,app.redirects.tsx,proxy.404.tsx,app.tsx} + __tests__, app/shopify.server.ts, prisma/schema.prisma (+migration), extensions/notfound-capture/*, shopify.app.toml, PROGRESS.md, DECISIONS.md
 - **Next 3 actions:**
-  1. User runs `PATH=/usr/local/opt/node@22/bin:$PATH shopify app dev` → auth, create app "pathmend" in Partner org, pick dev store, confirm embedded admin loads; then live-test plan page, Redirects CRUD, and webhook triggers
-  2. Dashboard + 404 Log UI: "Unresolved 404s" table, one-click Create redirect (pre-filled), bulk fix, mark-ignored (render path/referrer as text only — stored attacker-controlled strings)
-  3. Replace template home page with Dashboard; drop `write_products` scope + template demo code once replaced
+  1. User runs `PATH=/usr/local/opt/node@22/bin:$PATH shopify app dev` → auth, create app "pathmend" in Partner org, pick dev store; then live-test the full Phase 1–2 surface (embedded admin, plan page, Redirects, 404 Log, capture beacon on the dev store's 404 page, webhook triggers)
+  2. Phase 3 start: verify Shopify bulk redirect import mutations on shopify.dev, then CSV import/export (validate, dry-run preview, error report)
+  3. Pattern rules (wildcard + regex) + auto-heal mode
+- **Cleanup queue (needs user OK):** delete orphaned app/routes/app.additional.tsx (template leftover, no longer linked in nav)
 - **Blockers/questions:** Store link is the only user-blocked step. Decide manual Billing API vs Managed Pricing before submission (manual implemented; switch is cheap — see DECISIONS.md 2026-08-10). `npm audit` findings in template deps parked until pre-ship audit.

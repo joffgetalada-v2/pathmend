@@ -4,6 +4,10 @@ const findUniqueSettings = vi.fn();
 const findUniqueEvent = vi.fn();
 const updateEvent = vi.fn();
 const createEvent = vi.fn();
+const findManyEvents = vi.fn();
+const countEvents = vi.fn();
+const updateManyEvents = vi.fn();
+const groupByEvents = vi.fn();
 vi.mock("../../db.server", () => ({
   default: {
     shopSettings: {
@@ -13,11 +17,21 @@ vi.mock("../../db.server", () => ({
       findUnique: (args: unknown) => findUniqueEvent(args),
       update: (args: unknown) => updateEvent(args),
       create: (args: unknown) => createEvent(args),
+      findMany: (args: unknown) => findManyEvents(args),
+      count: (args: unknown) => countEvents(args),
+      updateMany: (args: unknown) => updateManyEvents(args),
+      groupBy: (args: unknown) => groupByEvents(args),
     },
   },
 }));
 
-import { normalize404Path, recordNotFoundEvent } from "../not-found.server";
+import { normalize404Path } from "../not-found";
+import {
+  listNotFoundEvents,
+  notFoundStatusCounts,
+  recordNotFoundEvent,
+  setNotFoundStatus,
+} from "../not-found.server";
 
 const SHOP = "example.myshopify.com";
 
@@ -27,6 +41,10 @@ beforeEach(() => {
   findUniqueEvent.mockResolvedValue(null);
   updateEvent.mockResolvedValue({});
   createEvent.mockResolvedValue({});
+  findManyEvents.mockResolvedValue([]);
+  countEvents.mockResolvedValue(0);
+  updateManyEvents.mockResolvedValue({ count: 0 });
+  groupByEvents.mockResolvedValue([]);
 });
 
 describe("normalize404Path", () => {
@@ -169,5 +187,79 @@ describe("recordNotFoundEvent", () => {
       deviceType: "smart-fridge",
     });
     expect(createEvent.mock.calls[0]![0].data.deviceType).toBe("unknown");
+  });
+});
+
+describe("listNotFoundEvents", () => {
+  test("filters by shop and status, newest last-seen first, offset paging", async () => {
+    findManyEvents.mockResolvedValue([{ id: "1" }]);
+    countEvents.mockResolvedValue(60);
+
+    const result = await listNotFoundEvents(SHOP, {
+      status: "unresolved",
+      page: 3,
+      pageSize: 25,
+    });
+
+    expect(findManyEvents).toHaveBeenCalledWith({
+      where: { shop: SHOP, status: "unresolved" },
+      orderBy: { lastSeenAt: "desc" },
+      skip: 50,
+      take: 25,
+    });
+    expect(result).toEqual({ events: [{ id: "1" }], total: 60, page: 3, pageSize: 25 });
+  });
+
+  test("lowercases the search term to match normalized stored paths", async () => {
+    // Stored paths are always lowercased; SQLite's contains is
+    // case-insensitive but Postgres's is not — don't rely on the quirk.
+    await listNotFoundEvents(SHOP, { search: "Blog" });
+
+    expect(findManyEvents.mock.calls[0]![0].where).toEqual({
+      shop: SHOP,
+      status: "unresolved",
+      path: { contains: "blog" },
+    });
+  });
+
+  test("clamps page numbers at both ends", async () => {
+    await listNotFoundEvents(SHOP, { page: -5 });
+    expect(findManyEvents.mock.calls[0]![0].skip).toBe(0);
+
+    await listNotFoundEvents(SHOP, { page: 999_999_999, pageSize: 25 });
+    expect(findManyEvents.mock.calls[1]![0].skip).toBe((10_000 - 1) * 25);
+  });
+});
+
+describe("setNotFoundStatus", () => {
+  test("updates only the given ids within the shop", async () => {
+    updateManyEvents.mockResolvedValue({ count: 2 });
+
+    const count = await setNotFoundStatus(SHOP, ["a", "b"], "ignored");
+
+    expect(updateManyEvents).toHaveBeenCalledWith({
+      where: { shop: SHOP, id: { in: ["a", "b"] } },
+      data: { status: "ignored" },
+    });
+    expect(count).toBe(2);
+  });
+
+  test("does nothing for an empty id list", async () => {
+    const count = await setNotFoundStatus(SHOP, [], "ignored");
+    expect(count).toBe(0);
+    expect(updateManyEvents).not.toHaveBeenCalled();
+  });
+});
+
+describe("notFoundStatusCounts", () => {
+  test("maps groupBy rows onto all three statuses, defaulting to 0", async () => {
+    groupByEvents.mockResolvedValue([
+      { status: "unresolved", _count: 7 },
+      { status: "ignored", _count: 2 },
+    ]);
+
+    const counts = await notFoundStatusCounts(SHOP);
+
+    expect(counts).toEqual({ unresolved: 7, resolved: 0, ignored: 2 });
   });
 });

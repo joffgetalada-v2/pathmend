@@ -1,9 +1,14 @@
 import db from "../db.server";
 import { DEVICE_TYPES, type DeviceType } from "./device";
-import { normalizePath } from "./redirects";
+import {
+  NOT_FOUND_PAGE_SIZE,
+  NOT_FOUND_STATUSES,
+  normalize404Path,
+  type NotFoundStatus,
+} from "./not-found";
 
-export const MAX_404_PATH_LENGTH = 1024;
 const MAX_REFERRER_LENGTH = 1024;
+const MAX_NOT_FOUND_PAGE = 10_000;
 
 export interface NotFoundReport {
   path: string;
@@ -12,22 +17,6 @@ export interface NotFoundReport {
 }
 
 export type RecordResult = "recorded" | "capture_disabled" | "invalid";
-
-/**
- * Dedupe key for 404 events: lowercased, fragment-stripped, no trailing
- * slash. Returns null for paths we refuse to record (root, over-long).
- */
-export function normalize404Path(raw: string): string | null {
-  const withoutFragment = raw.split("#")[0] ?? "";
-  let path = normalizePath(withoutFragment).toLowerCase();
-  if (path.length > 1 && path.endsWith("/")) {
-    path = path.slice(0, -1);
-  }
-  if (path === "/" || path.length > MAX_404_PATH_LENGTH) {
-    return null;
-  }
-  return path;
-}
 
 const sanitizeReferrer = (referrer: string | null | undefined): string | null => {
   if (typeof referrer !== "string") return null;
@@ -122,4 +111,88 @@ export async function recordNotFoundEvent(
     }
   }
   return "recorded";
+}
+
+export interface NotFoundEventPage<Event> {
+  events: Event[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * Offset pagination is fine here: the table is local, per-shop, and bounded
+ * by the capture rate limit — no cursor complexity needed.
+ */
+export async function listNotFoundEvents(
+  shop: string,
+  options: {
+    status?: NotFoundStatus;
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  } = {},
+) {
+  const status = options.status ?? "unresolved";
+  const pageSize = options.pageSize ?? NOT_FOUND_PAGE_SIZE;
+  const page = Math.min(
+    MAX_NOT_FOUND_PAGE,
+    Math.max(1, Math.floor(options.page ?? 1)),
+  );
+  // Stored paths are lowercased by normalize404Path; lowercase the term too
+  // so search stays correct on Postgres (case-sensitive contains), not just
+  // on SQLite's case-insensitive default.
+  const search = options.search?.trim().toLowerCase();
+
+  const where = {
+    shop,
+    status,
+    ...(search ? { path: { contains: search } } : {}),
+  };
+
+  const [events, total] = await Promise.all([
+    db.notFoundEvent.findMany({
+      where,
+      orderBy: { lastSeenAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    db.notFoundEvent.count({ where }),
+  ]);
+
+  return { events, total, page, pageSize };
+}
+
+export async function setNotFoundStatus(
+  shop: string,
+  ids: string[],
+  status: NotFoundStatus,
+): Promise<number> {
+  if (ids.length === 0) return 0;
+  const { count } = await db.notFoundEvent.updateMany({
+    where: { shop, id: { in: ids } },
+    data: { status },
+  });
+  return count;
+}
+
+export async function notFoundStatusCounts(
+  shop: string,
+): Promise<Record<NotFoundStatus, number>> {
+  const rows = await db.notFoundEvent.groupBy({
+    by: ["status"],
+    where: { shop },
+    _count: true,
+  });
+  const counts: Record<NotFoundStatus, number> = {
+    unresolved: 0,
+    resolved: 0,
+    ignored: 0,
+  };
+  for (const row of rows) {
+    if (NOT_FOUND_STATUSES.includes(row.status as NotFoundStatus)) {
+      counts[row.status as NotFoundStatus] = row._count;
+    }
+  }
+  return counts;
 }
