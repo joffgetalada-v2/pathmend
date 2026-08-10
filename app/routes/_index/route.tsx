@@ -21,9 +21,10 @@ export default function App() {
   return (
     <div className={styles.index}>
       <div className={styles.content}>
-        <h1 className={styles.heading}>A short heading about [your app]</h1>
+        <h1 className={styles.heading}>Pathmend — Redirect &amp; 404 Manager</h1>
         <p className={styles.text}>
-          A tagline about [your app] that describes your value proposition.
+          Catch broken links automatically and fix them in one click. Built for
+          store migrations.
         </p>
         {showForm && (
           <Form className={styles.form} method="post" action="/auth/login">
@@ -39,16 +40,16 @@ export default function App() {
         )}
         <ul className={styles.list}>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Automatic 404 detection</strong>. Broken links are captured
+            as visitors hit them — no manual crawling.
           </li>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>One-click 301 redirects</strong>. Fix any 404 from the log.
+            Native Shopify redirects — no proxy, no slowdown.
           </li>
           <li>
-            <strong>Product feature</strong>. Some detail about your feature and
-            its benefit to your customer.
+            <strong>Migration importer</strong>. Match a whole store&apos;s old
+            URLs by CSV or sitemap, with confidence scores to review.
           </li>
         </ul>
       </div>

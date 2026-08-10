@@ -49,12 +49,12 @@
 - [x] Microcopy pass (merchant-friendly, no jargon) — agent audit → applied high-impact fixes: unified "broken link" vocabulary, killed internal terms (app embed/capture embed/auto-heal-as-"healed"), natural pluralization (pluralize helper), capitalized enum badges, actionable dead-end messages, SitemapUrlError so only merchant-safe errors surface. Declined spec-defined names (Settings & Plan, Pattern rules) per CLAUDE.md §7 IA
 
 ### Phase 6 — Ship
-- [ ] Seed demo data in dev store
-- [ ] Listing copy draft + screenshot shot-list
-- [ ] Screencast script
-- [ ] Full self-audit vs Shopify App Requirements Checklist
-- [ ] Fix audit findings
-- [ ] Prepare submission
+- [~] Seed demo data in dev store — plan written (docs/demo-data.md); actual seed run needs the store link
+- [x] Listing copy draft + screenshot shot-list — docs/listing-copy.md + docs/screenshot-shotlist.md (App Store rules applied: ≤30-char name, no Shopify/myshopify/PII)
+- [x] Screencast script — docs/screencast-script.md (~90s walkthrough)
+- [x] Full self-audit vs Shopify App Requirements Checklist — docs/self-audit.md; verdict: no security/compliance code defects, blockers are config + live checks
+- [x] Fix audit findings (code/content) — real splash copy, deleted app.additional.tsx, real README, env-driven DATABASE_URL + .env.example. Remaining must-fixes are config-only (config link, proxy url, provider swap) — need the store/deploy
+- [ ] Prepare submission — needs store link (config link, live verification, assets from the shot-list/screencast)
 
 ### Definition of Done (v1)
 - [ ] Phases 0–6 complete
@@ -64,8 +64,8 @@
 - [ ] Storefront perf impact ≈ 0
 
 ## Current Status
-- **Current phase:** Phase 5 — Polish: code-verifiable parts DONE (onboarding checklist, empty states, microcopy). Perf + accessibility passes DEFERRED to the store link (need a browser). Phases 1–4 + Phase 5 code parts complete. Next: Phase 6 shippable artifacts (code-auditable parts), then everything live once store is linked.
-- **Last completed task:** Phase 4 analytics — PRO-gated Analytics page (summary cards, inline-SVG day chart, top-paths table) + weekly digest card on the free Dashboard. Reviews: security clean (tenant isolation, plan gate before load, attacker paths render as escaped text and never reach the SVG chart); code review 0 crit/high with 1 MEDIUM (unbounded findMany) — fixed by moving aggregates to a DB groupBy + bounding the window fetch (take 5000), which also made status counts exact over all history. 259/259 tests green; typecheck/build/lint clean
+- **Current phase:** Phase 6 — Ship: no-store deliverables DONE (listing copy, screenshot shot-list, screencast script, demo-data plan, self-audit + code/content fixes). Everything code-verifiable across Phases 0–6 is complete. Remaining work ALL needs the dev-store link: config link, live verification (install/uninstall/billing/GDPR/perf/a11y), demo-data seed, asset capture, submission.
+- **Last completed task:** Phase 6 no-store deliverables — docs/ (listing-copy, screenshot-shotlist, screencast-script, demo-data, self-audit); pre-submission self-audit (no security/compliance code defects). Applied audit code/content fixes: real splash copy, deleted template app.additional.tsx, real README, env-driven DATABASE_URL + committable .env.example. 274/274 tests green; typecheck/build/lint clean
 - **Files created/modified this session:** app/models/{plans.ts,billing.server.ts,redirects.ts,redirects.server.ts,not-found.server.ts,device.ts,rate-limit.server.ts,purge.server.ts} + __tests__, app/routes/{app.plan.tsx,app.redirects.tsx,proxy.404.tsx,app.tsx} + __tests__, app/shopify.server.ts, prisma/schema.prisma (+migration), extensions/notfound-capture/*, shopify.app.toml, PROGRESS.md, DECISIONS.md
 - **Next 3 actions:**
   1. User runs `PATH=/usr/local/opt/node@22/bin:$PATH shopify app dev` → auth, create app "pathmend" in Partner org, pick dev store; then live-test the full Phase 1–2 surface (embedded admin, plan page, Redirects, 404 Log, capture beacon on the dev store's 404 page, webhook triggers)

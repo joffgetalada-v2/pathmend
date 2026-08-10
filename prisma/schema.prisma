@@ -9,8 +9,12 @@ generator client {
 // enough when changing adapters.
 // See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
+  // provider is resolved at `prisma generate` time, so the SQLite→Postgres
+  // switch for production is a one-line change here plus a fresh migration —
+  // see DECISIONS.md. The connection string IS env-driven: set DATABASE_URL
+  // (falls back to the local SQLite file in dev).
   provider = "sqlite"
-  url      = "file:dev.sqlite"
+  url      = env("DATABASE_URL")
 }
 
 // Mirror of the native Shopify UrlRedirect we created — the live redirect
