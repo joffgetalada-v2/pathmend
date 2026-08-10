@@ -22,6 +22,7 @@ vi.mock("../../db.server", () => ({
 import {
   createRedirect,
   deleteRedirect,
+  fetchAllRedirects,
   listRedirects,
   updateRedirect,
 } from "../redirects.server";
@@ -223,6 +224,71 @@ describe("listRedirects", () => {
     const [, options] = admin.graphql.mock.calls[0]!;
     expect(options.variables.query).toBe("old");
     expect(options.variables.after).toBe("cursor-1");
+  });
+
+  test("fetchAllRedirects follows cursors until exhausted", async () => {
+    const pages = [
+      {
+        urlRedirects: {
+          nodes: [{ id: "gid://1", path: "/a", target: "/b" }],
+          pageInfo: {
+            hasNextPage: true,
+            hasPreviousPage: false,
+            startCursor: "a",
+            endCursor: "cursor-1",
+          },
+        },
+      },
+      {
+        urlRedirects: {
+          nodes: [{ id: "gid://2", path: "/c", target: "/d" }],
+          pageInfo: {
+            hasNextPage: false,
+            hasPreviousPage: true,
+            startCursor: "b",
+            endCursor: "cursor-2",
+          },
+        },
+      },
+    ];
+    const admin = {
+      graphql: vi
+        .fn()
+        .mockResolvedValueOnce(graphqlResponse(pages[0]))
+        .mockResolvedValueOnce(graphqlResponse(pages[1])),
+    };
+
+    const redirects = await fetchAllRedirects(admin);
+
+    expect(redirects.map((r) => r.path)).toEqual(["/a", "/c"]);
+    expect(admin.graphql).toHaveBeenCalledTimes(2);
+    const secondCall = admin.graphql.mock.calls[1]![1];
+    expect(secondCall.variables.after).toBe("cursor-1");
+  });
+
+  test("fetchAllRedirects stops at the row cap", async () => {
+    const page = {
+      urlRedirects: {
+        nodes: [{ id: "gid://1", path: "/a", target: "/b" }],
+        pageInfo: {
+          hasNextPage: true,
+          hasPreviousPage: false,
+          startCursor: "a",
+          endCursor: "next",
+        },
+      },
+    };
+    const admin = {
+      // Fresh Response per call — a Response body is single-read.
+      graphql: vi.fn().mockImplementation(() =>
+        Promise.resolve(graphqlResponse(page)),
+      ),
+    };
+
+    const redirects = await fetchAllRedirects(admin, { maxRows: 3 });
+
+    expect(redirects).toHaveLength(3);
+    expect(admin.graphql).toHaveBeenCalledTimes(3);
   });
 
   test("quotes pasted URLs so Shopify search matches them literally", async () => {

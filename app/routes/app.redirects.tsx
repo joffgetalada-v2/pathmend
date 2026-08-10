@@ -162,6 +162,27 @@ export default function RedirectsPage() {
     setSearchParams(searchText ? { search: searchText } : {});
   };
 
+  const exportRedirects = async () => {
+    // App Bridge patches fetch to attach the session token for app-origin
+    // requests, so the resource route can authenticate this download.
+    try {
+      const response = await fetch("/app/export-redirects");
+      if (!response.ok) throw new Error(`export failed: ${response.status}`);
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "redirects.csv";
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("redirect export failed", error);
+      shopify.toast.show("Export failed — please try again", {
+        isError: true,
+      });
+    }
+  };
+
   const goToPage = (cursor: string | null, direction: "after" | "before") => {
     if (!cursor) return;
     const params: Record<string, string> = {};
@@ -239,6 +260,10 @@ export default function RedirectsPage() {
 
       <s-section heading="All redirects">
         <s-stack direction="inline" gap="base">
+          <s-button onClick={exportRedirects}>Export CSV</s-button>
+          <s-button href="/app/import" variant="tertiary">
+            Import CSV
+          </s-button>
           <s-search-field
             label="Search redirects"
             labelAccessibilityVisibility="exclusive"

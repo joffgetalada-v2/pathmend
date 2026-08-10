@@ -288,3 +288,32 @@ export async function listRedirects(
 export function countRedirects(shop: string): Promise<number> {
   return db.redirect.count({ where: { shop } });
 }
+
+const EXPORT_PAGE_SIZE = 250;
+const EXPORT_MAX_ROWS = 10_000;
+
+/**
+ * Pages through every redirect on the shop (Shopify is the source of truth,
+ * so exports include redirects created outside this app too). Capped so a
+ * pathological shop can't hold the request open indefinitely.
+ */
+export async function fetchAllRedirects(
+  admin: AdminClient,
+  options: { maxRows?: number } = {},
+): Promise<RedirectRecord[]> {
+  const maxRows = options.maxRows ?? EXPORT_MAX_ROWS;
+  const redirects: RedirectRecord[] = [];
+  let after: string | null = null;
+
+  while (redirects.length < maxRows) {
+    const page: RedirectPage = await listRedirects(admin, {
+      after,
+      pageSize: Math.min(EXPORT_PAGE_SIZE, maxRows - redirects.length),
+    });
+    redirects.push(...page.redirects);
+    if (!page.pageInfo.hasNextPage || page.redirects.length === 0) break;
+    after = page.pageInfo.endCursor;
+  }
+
+  return redirects.slice(0, maxRows);
+}

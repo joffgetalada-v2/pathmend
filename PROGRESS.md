@@ -28,8 +28,8 @@
 - [x] 404 Log UI — status tabs with counts, path search, offset pagination, per-row fix
 
 ### Phase 3 — Differentiators
-- [ ] Bulk CSV import/export (validate, dry-run preview, error report)
-- [ ] Verify Shopify bulk redirect import mutations on shopify.dev
+- [x] Bulk CSV import/export (validate, dry-run preview, error report) — Import page (preview → apply, per-row errors, 500-row cap, plan-cap aware) + CSV export (all shop redirects, formula-guarded); unit tested
+- [x] Verify Shopify bulk redirect import mutations on shopify.dev — urlRedirectImportCreate/Submit exist on 2025-10; per-row chosen for v1 (see DECISIONS.md)
 - [ ] Pattern rules (wildcard + regex)
 - [ ] Auto-heal mode (404 matches pattern → materialize concrete redirect + log)
 - [ ] Migration import: CSV old_url,new_url
@@ -64,12 +64,12 @@
 - [ ] Storefront perf impact ≈ 0
 
 ## Current Status
-- **Current phase:** Phase 2 — Core: CODE-COMPLETE. Phases 1–2 fully implemented and reviewed; live verification of everything still pending the Phase 0 store link (user).
-- **Last completed task:** Dashboard + 404 Log UI — status tabs with counts, search, pagination, one-click Fix (pre-filled), bulk fix with per-path failure reporting + retry, ignore/restore; template home replaced with Dashboard (stat cards + latest unresolved); `write_products` scope dropped. Reviews: both approved 0 critical/high; applied 2 MEDIUMs (bulk-failure surfacing, Postgres-safe lowercased search) + LOW page clamp + crafted-path regression test. 104/104 tests green; typecheck/build/lint clean
+- **Current phase:** Phase 3 — Differentiators (CSV import/export done; pattern rules + auto-heal next). Live verification of Phases 0–3 still pending the store link (user).
+- **Last completed task:** CSV import/export — Import page (upload → server-validated dry-run preview with per-line errors → apply via per-row createRedirect, 500-row cap, plan-cap aware, failed rows kept for retry) + formula-guarded CSV export of all shop redirects (cursor-paginated, 10k cap) + Export/Import buttons and nav. Native urlRedirectImportCreate/Submit verified on 2025-10; per-row chosen for v1 (DECISIONS.md). Reviews: code approved 0 critical/high (2 LOWs applied); security found 1 HIGH (2MB cap ran after formData() buffered the body — pre-parse Content-Length gate added) + 1 MEDIUM (formula guard extended to tab/CR prefixes). 125/125 tests green; typecheck/build/lint clean
 - **Files created/modified this session:** app/models/{plans.ts,billing.server.ts,redirects.ts,redirects.server.ts,not-found.server.ts,device.ts,rate-limit.server.ts,purge.server.ts} + __tests__, app/routes/{app.plan.tsx,app.redirects.tsx,proxy.404.tsx,app.tsx} + __tests__, app/shopify.server.ts, prisma/schema.prisma (+migration), extensions/notfound-capture/*, shopify.app.toml, PROGRESS.md, DECISIONS.md
 - **Next 3 actions:**
   1. User runs `PATH=/usr/local/opt/node@22/bin:$PATH shopify app dev` → auth, create app "pathmend" in Partner org, pick dev store; then live-test the full Phase 1–2 surface (embedded admin, plan page, Redirects, 404 Log, capture beacon on the dev store's 404 page, webhook triggers)
-  2. Phase 3 start: verify Shopify bulk redirect import mutations on shopify.dev, then CSV import/export (validate, dry-run preview, error report)
-  3. Pattern rules (wildcard + regex) + auto-heal mode
+  2. Pattern rules (wildcard + regex): PatternRule Prisma model + matcher engine (unit-test heavy) + rules UI, PRO-gated
+  3. Auto-heal mode: on 404 capture, match saved patterns → materialize concrete redirect + log; then migration importer (CSV old→new + sitemap fetch + GraphQL search matcher + confidence review screen)
 - **Cleanup queue (needs user OK):** delete orphaned app/routes/app.additional.tsx (template leftover, no longer linked in nav)
 - **Blockers/questions:** Store link is the only user-blocked step. Decide manual Billing API vs Managed Pricing before submission (manual implemented; switch is cheap — see DECISIONS.md 2026-08-10). `npm audit` findings in template deps parked until pre-ship audit.
