@@ -1,1 +1,4 @@
-* @shop/dev_experience
+# Inherited from Shopify's app-template repo; @shop/dev_experience is a Shopify
+# team that doesn't exist in this repo (GitHub flagged it as an unknown owner).
+# Disabled 2026-08-15 — replace with a real owner or delete this file.
+# * @shop/dev_experience

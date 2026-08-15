@@ -6,10 +6,11 @@ name: Gardener - Notify Slack
 # full GITHUB_TOKEN permissions and Actions secret access — this is what
 # lets it succeed for Dependabot-opened PRs, where the upstream event
 # workflow can't label or reach secrets directly.
+# DISABLED 2026-08-15 — inherited from Shopify's app-template repo; posts to
+# Shopify's internal Slack (needs their bot token). Trigger removed. Safe to
+# delete.
 on:
-  workflow_run:
-    workflows: ['Gardener - Notify Event']
-    types: [completed]
+  workflow_dispatch:
 
 permissions:
   contents: read

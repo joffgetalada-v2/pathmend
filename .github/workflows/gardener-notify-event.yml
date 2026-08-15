@@ -11,11 +11,12 @@ name: Gardener - Notify Event
 # Uses pull_request_target so fork-opened PRs still produce an artifact.
 # No code is checked out here; this workflow only reads the pre-parsed
 # event payload, so there is no pwn-request surface.
+#
+# DISABLED 2026-08-15 — inherited from Shopify's app-template repo; part of
+# Shopify's internal AI issue-triage tooling. Event triggers removed so it no
+# longer fires on every issue/PR here. Safe to delete.
 on:
-  issues:
-    types: [opened, labeled]
-  pull_request_target:
-    types: [opened, labeled]
+  workflow_dispatch:
 
 permissions:
   contents: read

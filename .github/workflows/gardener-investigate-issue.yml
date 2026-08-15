@@ -2,9 +2,11 @@ name: Gardener - Investigate Issue
 # Automatically investigates GitHub issues using Claude Code when the
 # 'devtools-investigate-for-gardener' label is applied. Can also be triggered manually
 # via workflow_dispatch for a specific issue number.
+#
+# DISABLED 2026-08-15 — inherited from Shopify's app-template repo; part of
+# Shopify's internal AI issue-triage tooling (needs their Slack tokens and
+# labels). Label trigger removed. Safe to delete.
 on:
-  issues:
-    types: [labeled]
   workflow_dispatch:
     inputs:
       issue_number:

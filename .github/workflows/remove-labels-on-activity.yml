@@ -1,7 +1,8 @@
 name: Remove Waiting Labels
+# DISABLED 2026-08-15 — inherited from Shopify's app-template repo (issue-triage
+# bot companion to close-waiting-for-response-issues.yml). Comment trigger
+# removed. Safe to delete.
 on:
-  issue_comment:
-    types: [created]
   workflow_dispatch:
 jobs:
   remove-labels-on-activity:

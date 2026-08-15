@@ -1,7 +1,8 @@
 name: Close Waiting for Response Issues
+# DISABLED 2026-08-15 — inherited from Shopify's app-template repo, where it
+# triages the template's own issue tracker. Not applicable to this app; the
+# daily cron failed here (no issues:write on the default token). Safe to delete.
 on:
-  schedule:
-    - cron: "30 1 * * *"
   workflow_dispatch:
 jobs:
   check-need-info:

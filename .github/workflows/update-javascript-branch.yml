@@ -1,14 +1,14 @@
 name: Update JavaScript branch
-
+# DISABLED 2026-08-15 — inherited from Shopify's app-template repo, where it
+# maintains a JavaScript twin of the TypeScript template. In this repo it would
+# strip all .ts/.tsx files and force-push a converted branch on every push to
+# main. Never wanted here; push trigger removed. Safe to delete.
 on:
-  push:
-    branches:
-      - main
-
   workflow_dispatch:
 
 jobs:
   convert-ts-files:
+    if: false # hard-disabled — would delete all TypeScript sources (see header)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
