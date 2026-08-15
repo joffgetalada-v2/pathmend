@@ -10,6 +10,11 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      # The Prisma datasource URL is env-driven (see DECISIONS.md 2026-08-11);
+      # locally it comes from the gitignored .env, which CI checkouts don't
+      # have — prisma validate (and anything touching the client) needs this.
+      DATABASE_URL: "file:dev.sqlite"
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
