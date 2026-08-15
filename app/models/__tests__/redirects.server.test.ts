@@ -34,9 +34,26 @@ const GID = "gid://shopify/UrlRedirect/123";
 const graphqlResponse = (data: unknown) =>
   new Response(JSON.stringify({ data }));
 
+// Fresh Response per call (a Response body is single-read) with an empty
+// chain-lookup result by default; tests override urlRedirects to seed chains.
 const makeAdmin = (data: unknown) => ({
-  graphql: vi.fn().mockResolvedValue(graphqlResponse(data)),
+  graphql: vi.fn().mockImplementation(() =>
+    Promise.resolve(
+      graphqlResponse({
+        urlRedirects: { nodes: [] },
+        ...(data as Record<string, unknown>),
+      }),
+    ),
+  ),
 });
+
+const callWith = (
+  admin: { graphql: ReturnType<typeof vi.fn> },
+  fragment: string,
+) =>
+  admin.graphql.mock.calls.find(([query]) =>
+    (query as string).includes(fragment),
+  );
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -64,7 +81,7 @@ describe("createRedirect", () => {
     );
 
     expect(result.status).toBe("created");
-    const [, options] = admin.graphql.mock.calls[0]!;
+    const [, options] = callWith(admin, "PathmendUrlRedirectCreate")!;
     expect(options.variables.urlRedirect).toEqual({
       path: "/old",
       target: "/new",
@@ -133,9 +150,104 @@ describe("createRedirect", () => {
     expect(result.status).toBe("invalid");
     expect(redirectUpsert).not.toHaveBeenCalled();
   });
+
+  test("rejects a target that is already redirected elsewhere", async () => {
+    const admin = makeAdmin({
+      ...created,
+      urlRedirects: {
+        nodes: [
+          { id: "gid://shopify/UrlRedirect/9", path: "/new", target: "/final" },
+        ],
+      },
+    });
+
+    const result = await createRedirect(
+      { admin, shop: SHOP, plan: PLAN_FREE },
+      { path: "/old", target: "/new", source: "manual" },
+    );
+
+    expect(result.status).toBe("invalid");
+    if (result.status === "invalid") {
+      expect(result.errors[0]!.message).toContain("/final");
+    }
+    // Only the chain lookup ran — no create mutation, no mirror write.
+    expect(admin.graphql).toHaveBeenCalledTimes(1);
+    expect(redirectUpsert).not.toHaveBeenCalled();
+  });
+
+  test("skips the chain lookup for absolute URL targets", async () => {
+    const admin = makeAdmin(created);
+
+    const result = await createRedirect(
+      { admin, shop: SHOP, plan: PLAN_FREE },
+      { path: "/old", target: "https://example.com/new", source: "manual" },
+    );
+
+    expect(result.status).toBe("created");
+    expect(admin.graphql).toHaveBeenCalledTimes(1);
+    expect(callWith(admin, "PathmendChainLookup")).toBeUndefined();
+  });
+
+  test("a failed chain lookup does not block creation", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const admin = {
+      graphql: vi
+        .fn()
+        .mockRejectedValueOnce(new Error("network down"))
+        .mockImplementation(() =>
+          Promise.resolve(graphqlResponse(created)),
+        ),
+    };
+
+    const result = await createRedirect(
+      { admin, shop: SHOP, plan: PLAN_FREE },
+      { path: "/old", target: "/new", source: "manual" },
+    );
+
+    expect(result.status).toBe("created");
+    consoleError.mockRestore();
+  });
 });
 
 describe("updateRedirect", () => {
+  test("rejects an update whose target chains into another redirect", async () => {
+    const admin = makeAdmin({
+      urlRedirects: {
+        nodes: [
+          { id: "gid://shopify/UrlRedirect/9", path: "/new-2", target: "/final" },
+        ],
+      },
+    });
+
+    const result = await updateRedirect(
+      { admin, shop: SHOP },
+      { id: GID, path: "/old-2", target: "/new-2" },
+    );
+
+    expect(result.status).toBe("invalid");
+    expect(redirectUpdateMany).not.toHaveBeenCalled();
+  });
+
+  test("does not flag a chain when the match is the redirect being updated", async () => {
+    const admin = makeAdmin({
+      urlRedirects: {
+        nodes: [{ id: GID, path: "/old-2", target: "/new-2" }],
+      },
+      urlRedirectUpdate: {
+        urlRedirect: { id: GID, path: "/moved", target: "/old-2" },
+        userErrors: [],
+      },
+    });
+
+    const result = await updateRedirect(
+      { admin, shop: SHOP },
+      { id: GID, path: "/moved", target: "/old-2" },
+    );
+
+    expect(result.status).toBe("updated");
+  });
   test("updates Shopify and the db mirror", async () => {
     const admin = makeAdmin({
       urlRedirectUpdate: {

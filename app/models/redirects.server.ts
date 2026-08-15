@@ -126,6 +126,47 @@ async function runGraphql<T>(
   return json.data;
 }
 
+const CHAIN_LOOKUP_QUERY = `#graphql
+  query PathmendChainLookup($first: Int, $query: String) {
+    urlRedirects(first: $first, query: $query) {
+      nodes { id path target }
+    }
+  }`;
+
+/**
+ * A relative target that is itself the source of another redirect chains two
+ * 301s (A→B→C): B only exists as a redirect because /b 404s, so every visitor
+ * takes the extra hop and link equity dilutes. Shopify accepts the chain
+ * silently, so we catch it here. Advisory only — a failed lookup must never
+ * block the merchant, so this fails open (null) and logs.
+ */
+async function findChainedRedirect(
+  admin: AdminClient,
+  target: string,
+): Promise<RedirectRecord | null> {
+  if (!target.startsWith("/")) return null; // absolute URLs leave the shop
+  const path = normalizePath(target);
+  try {
+    const data = await runGraphql<{
+      urlRedirects: { nodes: RedirectRecord[] };
+    }>(admin, CHAIN_LOOKUP_QUERY, { first: 10, query: `"${path}"` });
+    return (
+      data.urlRedirects.nodes.find((n) => normalizePath(n.path) === path) ??
+      null
+    );
+  } catch (error) {
+    console.error("redirect chain lookup failed", error);
+    return null;
+  }
+}
+
+function chainError(chained: RedirectRecord): RedirectInputError {
+  return {
+    field: "target",
+    message: `${chained.path} already redirects to ${chained.target}. Point this redirect straight at ${chained.target} so visitors skip the extra hop.`,
+  };
+}
+
 /** Mirror writes must never fail the merchant-facing operation. */
 async function bestEffortMirror(
   label: string,
@@ -159,6 +200,11 @@ export async function createRedirect(
 
   const path = normalizePath(input.path);
   const target = input.target.trim();
+
+  const chained = await findChainedRedirect(admin, target);
+  if (chained) {
+    return { status: "invalid", errors: [chainError(chained)] };
+  }
 
   const data = await runGraphql<{
     urlRedirectCreate: {
@@ -208,6 +254,11 @@ export async function updateRedirect(
 
   const path = normalizePath(input.path);
   const target = input.target.trim();
+
+  const chained = await findChainedRedirect(admin, target);
+  if (chained && chained.id !== input.id) {
+    return { status: "invalid", errors: [chainError(chained)] };
+  }
 
   const data = await runGraphql<{
     urlRedirectUpdate: {

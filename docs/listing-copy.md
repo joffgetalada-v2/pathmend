@@ -59,12 +59,21 @@ WooCommerce, BigCommerce, or Magento.
 
 **Why Pathmend**
 
-- **Redirects that never vanish.** They live as native Shopify redirects, not
-  behind a proxy — so there's no added latency and no SEO risk.
+- **Real redirects that never vanish.** Every redirect is a genuine Shopify
+  301 — never a client-side script, never routed through the app. No added
+  latency, no SEO risk, and nothing that quietly stops working.
+- **No false alarms.** Pathmend only logs pages your store actually served as
+  a 404 — it can't mistake a language route or a live page for a broken link,
+  and it never creates a redirect you didn't approve.
 - **Zero storefront bloat.** The tracker is tiny, loads asynchronously, runs
-  only on 404 pages, and adds no external requests.
-- **Built for migrations.** The importer and matcher exist because moving a
-  store is exactly when links break at scale.
+  only on 404 pages, and adds no external requests. Uninstalling removes it
+  completely.
+- **Built for migrations.** Point Pathmend at your old site's sitemap (or a
+  CSV) and it matches every old URL to the right product, collection, page,
+  or post — with a confidence score on each match, so you review before
+  anything goes live.
+- **Honest pricing.** Flat plans, and 404 detection is never metered — no
+  per-error quotas, no surprise usage charges, on any plan including Free.
 
 **Plans**
 
@@ -82,11 +91,11 @@ you've already created.
 
 ## Feature bullets (for the listing's feature list — keep concise, no keyword stuffing)
 
-- Automatic 404 detection with hit counts, referrers, and device type
-- One-click and bulk 301 redirects — native Shopify redirects, no proxy
-- Migration importer: CSV or sitemap → confidence-scored matches to review
-- Wildcard & regex pattern rules with automatic auto-heal
-- Bulk CSV import/export with dry-run preview
+- Automatic 404 detection with hit counts, referrers, and device type — unmetered on every plan
+- One-click and bulk 301 redirects — always native Shopify redirects, never client-side scripts
+- Migration importer: CSV or sitemap → smart, confidence-scored matches you review before applying
+- Wildcard & regex pattern rules with auto-heal that creates real, visible redirects
+- Bulk CSV import/export with dry-run preview and a per-row error report
 - 404 & redirect analytics with recovered-visit estimates
 
 ---
